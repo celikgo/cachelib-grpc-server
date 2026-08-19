@@ -32,6 +32,12 @@ No change to the RPC surface or the wire format: v1.6.x clients work unchanged.
 - Upstream CacheLib is pinned to an explicit commit (`ARG CACHELIB_REF`).
   Previously the build cloned `main`, so rebuilding a release tag pulled
   whatever upstream was that day and did not reproduce the release.
+- `patches/` are now real diffs applied with `git apply`, replacing whole-file
+  copies of two upstream files. The copies were taken from a tree ~450 commits
+  behind upstream; once the pin was added, the stale folly manifest still
+  declared a `double-conversion` dependency upstream had removed and the build
+  failed with `ManifestNotFound`. A diff cannot drift silently. CI verifies
+  they still apply, in ~20 seconds, on every push.
 - OCI image labels, including `org.opencontainers.image.source`.
 
 ## [1.6.0] — 2026-05-02
