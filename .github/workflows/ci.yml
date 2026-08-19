@@ -82,11 +82,25 @@ jobs:
           python3 ./build/fbcode_builder/getdeps.py --allow-system-packages \
             list-deps cachelib > /tmp/deps.txt
           cat /tmp/deps.txt
-          # the io_uring patch must actually take effect
-          if grep -qx libaio /tmp/deps.txt; then
-            echo "::error::libaio still in the dependency graph - io_uring patch did not apply"
+          # This is the failure the pin originally exposed: a stale patch
+          # referencing a manifest upstream had deleted.
+          grep -qx cachelib /tmp/deps.txt
+
+      - name: io_uring is actually disabled in folly
+        run: |
+          set -euo pipefail
+          m=/tmp/cachelib/build/fbcode_builder/manifests/folly
+          grep -qx 'FOLLY_USE_IO_URING=OFF' "$m"
+          grep -qx 'Liburing_FOUND=OFF' "$m"
+          grep -qx 'LIBURING_FOUND=OFF' "$m"
+          # folly must not pull libaio itself. Note cachelib's own manifest
+          # still declares libaio independently, so it legitimately remains in
+          # the resolved graph -- do not assert on the graph here.
+          if awk '/^\[dependencies.os=linux\]/{f=1;next} /^\[/{f=0} f' "$m" | grep -qx libaio; then
+            echo "::error::folly still declares libaio; the io_uring patch did not apply"
             exit 1
           fi
+          echo "io_uring disabled in folly as expected"
 
   # Smoke-test the published image against the real RPC surface. Independent of
   # the heavy source build, so we always get a meaningful signal quickly.
