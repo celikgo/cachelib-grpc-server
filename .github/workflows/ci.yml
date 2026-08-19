@@ -30,14 +30,12 @@ jobs:
         run: protoc --proto_path=proto --cpp_out=/tmp proto/cache.proto
 
       # Guards Apache-2.0 attribution: these files carry upstream Meta copyright
-      # headers and must keep them. (cmake/Find*.cmake are original rewrites with
-      # no upstream header, and folly.manifest is an INI manifest that never had
-      # one, so neither is checked here.)
+      # headers and must keep them. (cmake/Find*.cmake are original rewrites that
+      # carry no upstream header, so they are not checked here.)
       - name: Upstream copyright headers are intact
         run: |
           missing=0
-          for f in *.cc *.h proto/cache.proto CMakeLists.txt docker-compose.yml \
-                   patches/cachelib-common-CMakeLists.txt; do
+          for f in *.cc *.h proto/cache.proto CMakeLists.txt docker-compose.yml; do
             [ -e "$f" ] || continue
             if ! head -20 "$f" | grep -q "Copyright (c) Meta Platforms"; then
               echo "::error file=$f::upstream Meta copyright header missing"; missing=1
@@ -51,6 +49,44 @@ jobs:
       - uses: ludeeus/action-shellcheck@master
         with:
           scandir: ./bench
+
+  # The container build clones upstream CacheLib at a pinned revision and
+  # applies patches/ to it. Verifying that here takes ~20 seconds; discovering
+  # it inside the image build costs 15 minutes and a much worse error message.
+  patches:
+    name: Patches apply to pinned upstream
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the pinned CacheLib revision
+        id: ref
+        run: |
+          REF=$(grep -oE 'ARG CACHELIB_REF=[0-9a-f]{40}' Dockerfile | cut -d= -f2)
+          test -n "$REF" || { echo "::error::no pinned CACHELIB_REF in Dockerfile"; exit 1; }
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "pinned to $REF"
+
+      - name: Clone upstream at the pin
+        run: |
+          git clone --quiet https://github.com/facebook/CacheLib.git /tmp/cachelib
+          git -C /tmp/cachelib checkout --quiet --detach ${{ steps.ref.outputs.ref }}
+
+      - name: Patches must apply cleanly
+        run: git -C /tmp/cachelib apply --check -v "$GITHUB_WORKSPACE"/patches/*.patch
+
+      - name: Dependency graph must resolve
+        run: |
+          git -C /tmp/cachelib apply "$GITHUB_WORKSPACE"/patches/*.patch
+          cd /tmp/cachelib
+          python3 ./build/fbcode_builder/getdeps.py --allow-system-packages \
+            list-deps cachelib > /tmp/deps.txt
+          cat /tmp/deps.txt
+          # the io_uring patch must actually take effect
+          if grep -qx libaio /tmp/deps.txt; then
+            echo "::error::libaio still in the dependency graph - io_uring patch did not apply"
+            exit 1
+          fi
 
   # Smoke-test the published image against the real RPC surface. Independent of
   # the heavy source build, so we always get a meaningful signal quickly.

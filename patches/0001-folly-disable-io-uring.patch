@@ -1,0 +1,22 @@
+--- a/build/fbcode_builder/manifests/folly
++++ b/build/fbcode_builder/manifests/folly
+@@ -31,7 +31,8 @@
+ zlib
+ 
+ [dependencies.os=linux]
+-libaio
++# libaio removed: folly then builds without io_uring, whose kernel
++# features the Docker Desktop VM kernel does not expose.
+ libiberty
+ libunwind
+ # folly uses OpenSSL on every platform (SSL contexts, hashing, etc.).
+@@ -61,6 +62,9 @@
+ 
+ [cmake.defines]
+ BUILD_SHARED_LIBS=OFF
++FOLLY_USE_IO_URING=OFF
++Liburing_FOUND=OFF
++LIBURING_FOUND=OFF
+ 
+ [cmake.defines.feature_shared_libs=on]
+ BUILD_SHARED_LIBS=ON

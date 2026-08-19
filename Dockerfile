@@ -120,9 +120,12 @@ COPY cmake /build/CacheLib/standalone_server/cmake
 COPY tests /build/CacheLib/standalone_server/tests
 COPY *.cc *.h /build/CacheLib/standalone_server/
 
-# Patch folly manifest to disable io_uring (Docker VM kernel limitation).
-# See patches/README.md for what these two upstream files change and why.
-COPY patches/folly.manifest /build/CacheLib/build/fbcode_builder/manifests/folly
+# Apply our patches to the pinned upstream tree. These are real diffs, so if a
+# CACHELIB_REF bump makes one stop applying, the build fails here immediately
+# and loudly rather than much later with a confusing error.
+# See patches/README.md for what each one changes and why.
+COPY patches/*.patch /tmp/patches/
+RUN cd /build/CacheLib && git apply --verbose /tmp/patches/*.patch
 
 # Build CacheLib dependencies only (not cachelib itself) using getdeps.py
 WORKDIR /build/CacheLib
@@ -132,9 +135,6 @@ RUN python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build --on
 RUN INSTALL_PREFIX=$(python3 ./build/fbcode_builder/getdeps.py --allow-system-packages show-inst-dir fbthrift | xargs dirname) && \
     echo "INSTALL_PREFIX=${INSTALL_PREFIX}" && \
     ln -s ${INSTALL_PREFIX} /opt/getdeps-install
-
-# Patch CacheLib CMakeLists.txt to make exception tracer optional
-COPY patches/cachelib-common-CMakeLists.txt /build/CacheLib/cachelib/common/CMakeLists.txt
 
 # Build CacheLib manually with patched source
 WORKDIR /build/CacheLib

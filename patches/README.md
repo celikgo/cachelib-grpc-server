@@ -1,32 +1,41 @@
 # Upstream patches
 
-These two files are copied verbatim from [facebook/CacheLib][up] and modified.
-They are applied to the freshly-cloned upstream tree during the container build
-(see the `COPY patches/...` lines in the `Dockerfile`). Both retain their
-original Meta Platforms copyright headers.
+Two small diffs applied to the [facebook/CacheLib][up] tree during the
+container build, at the revision pinned by `ARG CACHELIB_REF` in the
+`Dockerfile`. They are applied with `git apply`, so if a pin bump makes one stop
+applying the build fails immediately and loudly instead of much later with a
+confusing error. CI verifies they still apply on every push, in about 20
+seconds, without waiting on a full build.
 
-| File | Replaces in upstream tree | Why |
+| Patch | Touches | Why |
 |---|---|---|
-| `folly.manifest` | `build/fbcode_builder/manifests/folly` | Builds folly without `io_uring`. The Docker Desktop VM kernel does not expose the `io_uring` features folly probes for, so the stock manifest produces a binary that fails at startup. |
-| `cachelib-common-CMakeLists.txt` | `cachelib/common/CMakeLists.txt` | Makes the exception tracer optional. It requires debug symbols and `libiberty` internals that are not present in the slim build image. |
+| `0001-folly-disable-io-uring.patch` | `build/fbcode_builder/manifests/folly` | Drops `libaio` from the Linux dependencies and forces `FOLLY_USE_IO_URING=OFF`, so folly builds without `io_uring`. The Docker Desktop VM kernel does not expose the features folly probes for, and the stock manifest yields a binary that fails at startup. |
+| `0002-cachelib-common-optional-targets.patch` | `cachelib/common/CMakeLists.txt` | Makes three hard link targets optional behind `if(TARGET …)` — folly's exception tracer, FBThrift's `thrift_dynamic_value`, and `magic_enum`. The exception tracer needs debug symbols and `libiberty` internals that the slim build image does not carry. |
 
-They are kept as whole files rather than `.patch` diffs because upstream
-`main` moves frequently and a context-sensitive diff breaks more often than a
-full-file replacement does.
+These replaced whole-file copies of the two upstream files. That approach
+carried a trap: the copies were taken from a tree ~450 commits behind upstream,
+so once `CACHELIB_REF` was pinned to a current revision the stale folly manifest
+still declared a `double-conversion` dependency that upstream had removed, and
+the build died with `ManifestNotFound`. A diff cannot drift silently that way —
+it either applies or fails.
 
-To see exactly what changed, diff against upstream at the pinned revision:
+## Attribution
+
+The context lines in these diffs are Meta's code, licensed under the Apache
+License 2.0. See [`../NOTICE`](../NOTICE). Nothing here removes or alters an
+upstream copyright header.
+
+## Verifying and regenerating
 
 ```bash
-# The revision the container build pins (ARG CACHELIB_REF in the Dockerfile)
-REF=6c222303ec8ca0654700b1dd01deb8c113d70321
+REF=$(grep -oE 'CACHELIB_REF=[0-9a-f]+' ../Dockerfile | cut -d= -f2)
 git clone https://github.com/facebook/CacheLib /tmp/cachelib
 git -C /tmp/cachelib checkout --detach "$REF"
-diff /tmp/cachelib/build/fbcode_builder/manifests/folly patches/folly.manifest
-diff /tmp/cachelib/cachelib/common/CMakeLists.txt patches/cachelib-common-CMakeLists.txt
+git -C /tmp/cachelib apply --check -v /path/to/patches/*.patch
 ```
 
-Both files keep their upstream headers where upstream has one: the CMakeLists
-carries Meta's copyright header and CI enforces that it stays. `folly.manifest`
-is an INI manifest and has no header upstream either.
+To move to a newer upstream revision: bump `CACHELIB_REF`, run the check above,
+and if a patch no longer applies, re-cut it against the new revision rather than
+force-fitting the old one.
 
 [up]: https://github.com/facebook/CacheLib

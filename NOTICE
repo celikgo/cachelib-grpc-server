@@ -16,11 +16,11 @@ dependency. CacheLib is cloned from its upstream repository at build time
 (see Dockerfile); its source is not vendored into this repository.
 
 Portions of this repository originate from, or are derived from, the CacheLib
-project -- including the CMake toolchain helpers under cmake/, the build
-scaffolding, and the two upstream files under patches/ that are applied to the
-CacheLib tree during the container build. Every such file retains its original
-Meta Platforms copyright header, as required by Section 4 of the Apache
-License, Version 2.0.
+project -- including the build scaffolding and the patches under patches/,
+whose context lines are Meta's code and which are applied to the CacheLib tree
+during the container build. Every file carried over retains its original Meta
+Platforms copyright header, as required by Section 4 of the Apache License,
+Version 2.0.
 
 A copy of the Apache License, Version 2.0 is included in the LICENSE file at
 the root of this repository, and may also be obtained at:
