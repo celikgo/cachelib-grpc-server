@@ -1,15 +1,77 @@
-# Raw ghz output: each 200k-request run emits ~17 MB of per-request samples.
-# Distilled figures live in bench/results-summary.json and BENCHMARKS.md.
+# ---- Benchmark output -------------------------------------------------------
+# Each 200k-request ghz run emits ~17 MB of per-request samples; a full sweep is
+# ~731 MB. The distilled figures are committed instead, in
+# bench/results-summary.json and BENCHMARKS.md. Regenerate raw runs with
+# bench/run.sh and bench/sweep.sh.
 bench/results/
 
+# ---- C++ / CMake build output ----------------------------------------------
 build/
+build-*/
 cmake-build-*/
+out/
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+Testing/
+
+# Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# Compiled objects, libraries and binaries
+*.o
+*.obj
+*.a
+*.lo
+*.la
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+cachelib-grpc-server
+
+# Generated protobuf / gRPC stubs. Sources of truth live in proto/; these are
+# produced at build time by protoc and must never be committed.
+*.pb.cc
+*.pb.h
+*.grpc.pb.cc
+*.grpc.pb.h
+*_pb2.py
+*_pb2_grpc.py
+
+# ---- Tooling ----------------------------------------------------------------
+compile_commands.json
+.cache/
+.clangd/
+*.gcda
+*.gcno
+*.gcov
+coverage/
+*.profraw
+*.profdata
+
+# ---- Python (bench harness) -------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---- Editors and OS ---------------------------------------------------------
 .idea/
 .vscode/
-*.o
-*.a
-*.so
-compile_commands.json
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 
-__pycache__/
-*.pyc
+# ---- Logs and scratch -------------------------------------------------------
+*.log
+*.tmp
