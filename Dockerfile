@@ -201,6 +201,14 @@ RUN cd build && \
 # Stage 3: Runtime image
 FROM ubuntu:24.04 AS runtime
 
+# OCI labels. org.opencontainers.image.source is what links the published
+# package to this repository on GHCR.
+LABEL org.opencontainers.image.source="https://github.com/celikgo/cachelib-grpc-server" \
+      org.opencontainers.image.description="A standalone gRPC server for Meta's CacheLib: 19 RPCs over a Redis-style key/value surface, on a hybrid DRAM+SSD cache." \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.title="cachelib-grpc-server" \
+      org.opencontainers.image.documentation="https://github.com/celikgo/cachelib-grpc-server/blob/main/README.md"
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install runtime dependencies only (Ubuntu 24.04 packages)
