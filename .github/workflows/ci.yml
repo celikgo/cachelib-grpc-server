@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast structural checks. These gate the wire contract and the scripts and
+  # finish in under a minute, so a broken proto never waits on a 90-minute
+  # container build to be discovered.
+  proto:
+    name: Proto + scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Compile proto
+        run: protoc --proto_path=proto --cpp_out=/tmp proto/cache.proto
+
+      - name: Check licence headers are intact
+        run: |
+          missing=0
+          for f in *.cc *.h proto/*.proto cmake/*.cmake patches/folly.manifest \
+                   patches/cachelib-common-CMakeLists.txt; do
+            [ -e "$f" ] || continue
+            if ! head -3 "$f" | grep -q "Copyright"; then
+              echo "::error file=$f::missing copyright header"; missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Verify LICENSE and NOTICE present
+        run: test -f LICENSE && test -f NOTICE
+
+      - uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: ./bench
+
+  # Smoke-test the published image against the real RPC surface. Independent of
+  # the heavy source build, so we always get a meaningful signal quickly.
+  smoke:
+    name: Smoke test published image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start server
+        run: |
+          docker run -d --name cache -p 50051:50051 -p 9090:9090 \
+            ghcr.io/celikgo/cachelib-grpc-server:latest
+          for _ in $(seq 1 60); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' cache)" = healthy ] && break
+            sleep 2
+          done
+          docker inspect -f '{{.State.Health.Status}}' cache | grep -q healthy
+
+      - name: Install grpcurl
+        run: |
+          curl -sSL https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_x86_64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin grpcurl
+
+      - name: Exercise the RPC surface
+        run: |
+          set -euo pipefail
+          grpcurl -plaintext localhost:50051 list | grep -q cachelib.grpc.CacheService
+          grpcurl -plaintext -d '{}' localhost:50051 cachelib.grpc.CacheService/Ping | grep -q PONG
+
+          V=$(printf world | base64)
+          grpcurl -plaintext -d "{\"key\":\"k1\",\"value\":\"$V\",\"ttl_seconds\":60}" \
+            localhost:50051 cachelib.grpc.CacheService/Set | grep -q '"success": true'
+          grpcurl -plaintext -d '{"key":"k1"}' \
+            localhost:50051 cachelib.grpc.CacheService/Get | grep -q '"found": true'
+
+          # Incr must stamp the TTL only on creation (ttl_set true, then false)
+          grpcurl -plaintext -d '{"key":"rl1","delta":1,"ttl_seconds":60}' \
+            localhost:50051 cachelib.grpc.CacheService/Incr | grep -q '"ttl_set": true'
+          grpcurl -plaintext -d '{"key":"rl1","delta":1,"ttl_seconds":60}' \
+            localhost:50051 cachelib.grpc.CacheService/Incr \
+            | tee /dev/stderr | grep -q '"value": "2"'
+
+          grpcurl -plaintext -d '{"key":"k1"}' \
+            localhost:50051 cachelib.grpc.CacheService/Delete | grep -q '"key_existed": true'
+
+      - name: Metrics endpoint responds
+        run: curl -fsS localhost:9090/metrics | head -5
+
+      - name: Server logs
+        if: always()
+        run: docker logs cache
+
+  # Full source build plus unit tests. Slow: compiles gRPC, folly, fbthrift and
+  # CacheLib from source. amd64 only here; the arm64 build runs at release time
+  # on a native arm64 runner.
+  build:
+    name: Build + unit tests (amd64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          df -h /
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image and run unit tests
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: tester
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

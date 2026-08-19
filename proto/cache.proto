@@ -1,0 +1,613 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package cachelib.grpc;
+
+option java_package = "com.facebook.cachelib.grpc";
+option java_outer_classname = "CacheProto";
+option java_multiple_files = true;
+
+// =============================================================================
+// CacheService - High-performance caching service powered by CacheLib
+// =============================================================================
+// Provides a Redis-like interface to CacheLib over gRPC.
+// Supports both DRAM and hybrid DRAM+SSD caching.
+service CacheService {
+  // ---------------------------------------------------------------------------
+  // Basic Operations
+  // ---------------------------------------------------------------------------
+
+  // Get retrieves a value from the cache by key.
+  // Returns found=false if key not found or expired.
+  rpc Get(GetRequest) returns (GetResponse) {}
+
+  // Set stores a key-value pair in the cache with optional TTL.
+  // If key exists, it will be overwritten.
+  rpc Set(SetRequest) returns (SetResponse) {}
+
+  // Delete removes a key from the cache.
+  // Returns success=true even if key didn't exist.
+  rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+
+  // Exists checks if a key exists in the cache.
+  rpc Exists(ExistsRequest) returns (ExistsResponse) {}
+
+  // ---------------------------------------------------------------------------
+  // Batch Operations
+  // ---------------------------------------------------------------------------
+
+  // MultiGet retrieves multiple values in a single call.
+  // More efficient than multiple Get calls for bulk reads.
+  rpc MultiGet(MultiGetRequest) returns (MultiGetResponse) {}
+
+  // MultiSet stores multiple key-value pairs in a single call.
+  // More efficient than multiple Set calls for bulk writes.
+  rpc MultiSet(MultiSetRequest) returns (MultiSetResponse) {}
+
+  // MultiDelete removes multiple keys in a single call.
+  // More efficient than multiple Delete calls for bulk deletes.
+  rpc MultiDelete(MultiDeleteRequest) returns (MultiDeleteResponse) {}
+
+  // ---------------------------------------------------------------------------
+  // Atomic Operations
+  // ---------------------------------------------------------------------------
+
+  // SetNX (Set if Not eXists) stores a value only if the key doesn't exist.
+  // Useful for distributed locks and idempotent operations.
+  rpc SetNX(SetNXRequest) returns (SetNXResponse) {}
+
+  // Increment atomically increments a numeric value.
+  // Creates the key with value=delta if it doesn't exist.
+  rpc Increment(IncrementRequest) returns (IncrementResponse) {}
+
+  // Decrement atomically decrements a numeric value.
+  // Creates the key with value=-delta if it doesn't exist.
+  rpc Decrement(DecrementRequest) returns (DecrementResponse) {}
+
+  // Incr atomically increments a counter and stamps a TTL on first creation.
+  // On miss: creates the key with value=delta and TTL=ttl_seconds (ttl_set=true).
+  // On hit: increments by delta and leaves the existing TTL untouched
+  // (ttl_set=false). Designed for fixed-window rate-limit buckets where the
+  // window must be sealed at creation and never extended by subsequent hits.
+  rpc Incr(IncrRequest) returns (IncrResponse) {}
+
+  // CompareAndSwap atomically updates a value if it matches expected.
+  // Useful for optimistic locking patterns.
+  rpc CompareAndSwap(CompareAndSwapRequest) returns (CompareAndSwapResponse) {}
+
+  // ---------------------------------------------------------------------------
+  // TTL Operations
+  // ---------------------------------------------------------------------------
+
+  // GetTTL returns the remaining TTL for a key.
+  // Use this to monitor cache freshness without retrieving the value.
+  rpc GetTTL(GetTTLRequest) returns (GetTTLResponse) {}
+
+  // Touch updates the TTL of a key without changing its value.
+  // Useful for sliding window expiration and session extension.
+  rpc Touch(TouchRequest) returns (TouchResponse) {}
+
+  // ---------------------------------------------------------------------------
+  // Key Scanning
+  // ---------------------------------------------------------------------------
+
+  // Scan iterates over keys matching a pattern with pagination.
+  // Note: This operation may be slow on large caches.
+  rpc Scan(ScanRequest) returns (ScanResponse) {}
+
+  // ---------------------------------------------------------------------------
+  // Streaming Operations
+  // ---------------------------------------------------------------------------
+
+  // Pipeline enables bidirectional streaming for batching multiple operations.
+  // Clients send a stream of requests and receive responses in order.
+  rpc Pipeline(stream PipelineRequest) returns (stream PipelineResponse) {}
+
+  // ---------------------------------------------------------------------------
+  // Administration
+  // ---------------------------------------------------------------------------
+
+  // Stats returns cache statistics and metrics.
+  rpc Stats(StatsRequest) returns (StatsResponse) {}
+
+  // Ping checks if the server is alive (health check).
+  rpc Ping(PingRequest) returns (PingResponse) {}
+
+  // Flush removes all keys from the cache.
+  // Use with caution - this operation cannot be undone.
+  rpc Flush(FlushRequest) returns (FlushResponse) {}
+}
+
+// =============================================================================
+// Basic Operation Messages
+// =============================================================================
+
+// GetRequest retrieves a value by key.
+//
+// Example: Get(key="user:123") -> GetResponse(found=true, value="{...}")
+message GetRequest {
+  // Cache key (max 250 bytes recommended for optimal performance)
+  string key = 1;
+}
+
+// GetResponse contains the retrieved value and metadata.
+message GetResponse {
+  // True if the key was found and not expired
+  bool found = 1;
+  // The cached value (empty if not found)
+  bytes value = 2;
+  // Remaining TTL in seconds (-1 = no expiry, 0 = expired/not found)
+  int64 ttl_remaining = 3;
+}
+
+// SetRequest stores a key-value pair.
+//
+// Example: Set(key="user:123", value="{...}", ttl_seconds=300)
+message SetRequest {
+  // Cache key (max 250 bytes recommended)
+  string key = 1;
+  // Value to store (max size depends on server config, typically 4MB)
+  bytes value = 2;
+  // Time-to-live in seconds (0 = no expiration, until evicted)
+  int64 ttl_seconds = 3;
+}
+
+// SetResponse indicates the result of a Set operation.
+message SetResponse {
+  // True if the value was stored successfully
+  bool success = 1;
+  // Human-readable status message
+  string message = 2;
+  // Actual stored value size in bytes (useful for client-side monitoring)
+  int64 size_bytes = 3;
+}
+
+// DeleteRequest removes a key from the cache.
+message DeleteRequest {
+  // Key to delete
+  string key = 1;
+}
+
+// DeleteResponse indicates the result of a Delete operation.
+message DeleteResponse {
+  // Always true unless there was an internal error
+  bool success = 1;
+  // True if the key existed before deletion
+  bool key_existed = 2;
+  // Human-readable status message
+  string message = 3;
+}
+
+// ExistsRequest checks for key existence.
+message ExistsRequest {
+  // Key to check
+  string key = 1;
+}
+
+// ExistsResponse indicates if the key exists.
+message ExistsResponse {
+  // True if key exists and is not expired
+  bool exists = 1;
+}
+
+// =============================================================================
+// Batch Operation Messages
+// =============================================================================
+
+// MultiGetRequest retrieves multiple keys at once.
+//
+// Example: MultiGet(keys=["user:1", "user:2", "user:3"])
+message MultiGetRequest {
+  // List of keys to retrieve
+  repeated string keys = 1;
+}
+
+// KeyValue represents a single result in batch operations.
+message KeyValue {
+  // The requested key
+  string key = 1;
+  // The value (empty if not found)
+  bytes value = 2;
+  // Whether the key was found
+  bool found = 3;
+  // Remaining TTL in seconds
+  int64 ttl_remaining = 4;
+}
+
+// MultiGetResponse contains results for all requested keys.
+message MultiGetResponse {
+  // Results in the same order as requested keys
+  repeated KeyValue results = 1;
+}
+
+// MultiSetRequest stores multiple key-value pairs.
+message MultiSetRequest {
+  // Items to store
+  repeated SetRequest items = 1;
+}
+
+// MultiSetResponse indicates results of the batch set operation.
+message MultiSetResponse {
+  // True if all items were stored successfully
+  bool success = 1;
+  // Number of items stored successfully
+  int32 succeeded_count = 2;
+  // Number of items that failed
+  int32 failed_count = 3;
+  // Human-readable status message
+  string message = 4;
+  // Keys that failed (only populated if there were failures)
+  repeated string failed_keys = 5;
+}
+
+// MultiDeleteRequest removes multiple keys at once.
+//
+// Example: MultiDelete(keys=["user:1", "user:2", "user:3"])
+message MultiDeleteRequest {
+  // List of keys to delete
+  repeated string keys = 1;
+}
+
+// MultiDeleteResponse indicates results of the batch delete operation.
+message MultiDeleteResponse {
+  // True if operation completed without internal errors
+  bool success = 1;
+  // Number of keys that were found and deleted
+  int32 deleted_count = 2;
+  // Number of keys that were not found
+  int32 not_found_count = 3;
+  // Human-readable status message
+  string message = 4;
+}
+
+// =============================================================================
+// Atomic Operation Messages
+// =============================================================================
+
+// SetNXRequest stores a value only if the key doesn't exist.
+//
+// Example: SetNX(key="lock:resource", value="owner-id", ttl_seconds=30)
+// Use case: Distributed locks, preventing duplicate processing
+message SetNXRequest {
+  // Key to set
+  string key = 1;
+  // Value to store
+  bytes value = 2;
+  // TTL in seconds (0 = no expiration)
+  int64 ttl_seconds = 3;
+}
+
+// SetNXResponse indicates if the value was set.
+message SetNXResponse {
+  // True if the key was set (didn't exist before)
+  bool was_set = 1;
+  // The existing value if was_set=false (optional, for debugging)
+  bytes existing_value = 2;
+  // Human-readable message
+  string message = 3;
+}
+
+// IncrementRequest atomically increments a numeric value.
+//
+// Example: Increment(key="counter:visits", delta=1)
+// Use case: Rate limiting, view counters, distributed counters
+message IncrementRequest {
+  // Key to increment
+  string key = 1;
+  // Amount to add (default: 1)
+  int64 delta = 2;
+  // TTL for new keys (0 = no expiration)
+  int64 ttl_seconds = 3;
+}
+
+// IncrementResponse contains the new value after increment.
+message IncrementResponse {
+  // True if operation succeeded
+  bool success = 1;
+  // The new value after incrementing
+  int64 new_value = 2;
+  // Human-readable message (especially for errors)
+  string message = 3;
+}
+
+// DecrementRequest atomically decrements a numeric value.
+message DecrementRequest {
+  // Key to decrement
+  string key = 1;
+  // Amount to subtract (default: 1)
+  int64 delta = 2;
+  // TTL for new keys (0 = no expiration)
+  int64 ttl_seconds = 3;
+}
+
+// DecrementResponse contains the new value after decrement.
+message DecrementResponse {
+  // True if operation succeeded
+  bool success = 1;
+  // The new value after decrementing
+  int64 new_value = 2;
+  // Human-readable message
+  string message = 3;
+}
+
+// IncrRequest atomically increments a counter; on creation, stamps a TTL.
+//
+// Example: Incr(key="rl:user:42:tier:gold", delta=1, ttl_seconds=60)
+// Use case: Tier-aware fixed-window rate-limit buckets where the window length
+// is set once (at bucket creation) and must not slide on subsequent hits.
+message IncrRequest {
+  // Key to increment
+  string key = 1;
+  // Amount to add (must be > 0 for rate-limit semantics; server treats 0 as 1)
+  int64 delta = 2;
+  // TTL in seconds applied only when the key is newly created (0 = no expiry)
+  int64 ttl_seconds = 3;
+}
+
+// IncrResponse contains the post-increment counter value.
+message IncrResponse {
+  // Counter value after the increment was applied
+  int64 value = 1;
+  // True if this call created the key and stamped ttl_seconds; false if the
+  // key already existed and the existing TTL was preserved
+  bool ttl_set = 2;
+}
+
+// CompareAndSwapRequest atomically updates if value matches expected.
+//
+// Example: CompareAndSwap(key="version", expected="v1", new_value="v2")
+// Use case: Optimistic locking, version control
+message CompareAndSwapRequest {
+  // Key to update
+  string key = 1;
+  // Expected current value
+  bytes expected_value = 2;
+  // New value to set if current matches expected
+  bytes new_value = 3;
+  // TTL in seconds (0 = no expiration, same as Set)
+  uint32 ttl_seconds = 4;
+  // When true, preserve existing TTL (ignores ttl_seconds)
+  bool keep_ttl = 5;
+}
+
+// CompareAndSwapResponse indicates if the swap succeeded.
+message CompareAndSwapResponse {
+  // True if the value was swapped
+  bool success = 1;
+  // The actual current value (useful if swap failed)
+  bytes actual_value = 2;
+  // Human-readable message
+  string message = 3;
+}
+
+// =============================================================================
+// TTL Operation Messages
+// =============================================================================
+
+// GetTTLRequest retrieves TTL for a key without fetching the value.
+//
+// Example: GetTTL(key="session:abc123")
+// Use case: Monitor cache freshness, implement cache warming
+message GetTTLRequest {
+  // Key to check
+  string key = 1;
+}
+
+// GetTTLResponse contains the TTL information.
+message GetTTLResponse {
+  // True if the key exists
+  bool found = 1;
+  // Remaining TTL in seconds
+  // -1 = key exists with no expiration
+  // -2 = key not found
+  // 0+ = seconds until expiration
+  int64 ttl_seconds = 2;
+}
+
+// TouchRequest updates TTL without changing the value.
+//
+// Example: Touch(key="session:abc123", ttl_seconds=1800)
+// Use case: Extend session expiry, sliding window caching
+message TouchRequest {
+  // Key to touch
+  string key = 1;
+  // New TTL in seconds (0 = remove expiration)
+  int64 ttl_seconds = 2;
+}
+
+// TouchResponse indicates if the TTL was updated.
+message TouchResponse {
+  // True if the key exists and TTL was updated
+  bool success = 1;
+  // Human-readable message
+  string message = 2;
+}
+
+// =============================================================================
+// Key Scanning Messages
+// =============================================================================
+
+// ScanRequest iterates over keys matching a pattern.
+//
+// Example: Scan(pattern="user:*", cursor="", count=100)
+// Note: Pattern matching uses simple prefix/suffix matching, not full regex
+message ScanRequest {
+  // Pattern to match (supports * as wildcard)
+  // Examples: "user:*", "*:profile", "session:*:data"
+  string pattern = 1;
+  // Cursor from previous ScanResponse (empty for first request)
+  string cursor = 2;
+  // Maximum number of keys to return per call (default: 100, max: 10000)
+  int32 count = 3;
+  // If true, include per-key metadata (TTL, size) in key_details
+  bool include_details = 4;
+}
+
+// KeyInfo contains metadata about a single cached key.
+message KeyInfo {
+  // The cache key
+  string key = 1;
+  // Remaining TTL in seconds (-1 = no expiry, 0 = expired/not found)
+  int64 ttl_remaining = 2;
+  // Stored value size in bytes
+  int64 size_bytes = 3;
+}
+
+// ScanResponse contains matching keys and pagination cursor.
+message ScanResponse {
+  // Matching keys (may be less than count if fewer matches)
+  repeated string keys = 1;
+  // Cursor for next page (empty if no more results)
+  string next_cursor = 2;
+  // True if there are more results
+  bool has_more = 3;
+  // Per-key metadata (only populated if include_details=true in request)
+  repeated KeyInfo key_details = 4;
+}
+
+// =============================================================================
+// Administration Messages
+// =============================================================================
+
+// StatsRequest requests cache statistics.
+message StatsRequest {
+  // If true, include detailed per-pool stats
+  bool detailed = 1;
+}
+
+// PoolStats contains statistics for a single memory pool.
+message PoolStats {
+  // Pool name
+  string pool_name = 1;
+  // Total pool size in bytes
+  int64 pool_size = 2;
+  // Used bytes in pool
+  int64 pool_used = 3;
+  // Number of items in pool
+  int64 item_count = 4;
+  // Hit rate for this pool (0.0 - 1.0)
+  double hit_rate = 5;
+}
+
+// StatsResponse contains comprehensive cache statistics.
+message StatsResponse {
+  // --- Memory Stats ---
+  // Total configured cache size in bytes
+  int64 total_size = 1;
+  // Actually used cache size in bytes
+  int64 used_size = 2;
+  // Number of items currently in cache
+  int64 item_count = 3;
+
+  // --- Operation Stats ---
+  // Cache hit rate (0.0 - 1.0)
+  double hit_rate = 4;
+  // Total number of GET operations
+  int64 get_count = 5;
+  // Number of cache hits
+  int64 hit_count = 6;
+  // Number of cache misses
+  int64 miss_count = 7;
+  // Total number of SET operations
+  int64 set_count = 8;
+  // Total number of DELETE operations
+  int64 delete_count = 9;
+  // Number of items evicted due to memory pressure
+  int64 eviction_count = 10;
+  // Number of items expired due to TTL
+  int64 expired_count = 11;
+
+  // --- NVM (SSD Cache) Stats ---
+  // Whether NVM cache is enabled
+  bool nvm_enabled = 12;
+  // NVM cache size in bytes
+  int64 nvm_size = 13;
+  // NVM cache used in bytes
+  int64 nvm_used = 14;
+  // NVM hit count
+  int64 nvm_hit_count = 15;
+  // NVM miss count
+  int64 nvm_miss_count = 16;
+
+  // --- Server Stats ---
+  // Server uptime in seconds
+  int64 uptime_seconds = 17;
+  // Server version string
+  string version = 18;
+
+  // --- Detailed Stats ---
+  // Per-pool statistics (only if detailed=true in request)
+  repeated PoolStats pool_stats = 19;
+}
+
+// PingRequest is an empty health check request.
+message PingRequest {}
+
+// PingResponse confirms server is alive.
+message PingResponse {
+  // Always returns "PONG"
+  string message = 1;
+  // Server timestamp in milliseconds since epoch
+  int64 timestamp = 2;
+}
+
+// FlushRequest removes all keys from the cache.
+message FlushRequest {
+  // If true, also clear NVM cache (if enabled)
+  bool include_nvm = 1;
+}
+
+// FlushResponse indicates the result of the flush operation.
+message FlushResponse {
+  // True if flush succeeded
+  bool success = 1;
+  // Number of items removed
+  int64 items_removed = 2;
+  // Human-readable message
+  string message = 3;
+}
+
+// =============================================================================
+// Pipeline Streaming Messages
+// =============================================================================
+
+// PipelineRequest wraps a single cache operation for streaming.
+message PipelineRequest {
+  // Client-assigned sequence ID for correlating responses
+  uint64 sequence_id = 1;
+  // The operation to perform
+  oneof operation {
+    GetRequest get = 2;
+    SetRequest set = 3;
+    DeleteRequest delete = 4;
+    ExistsRequest exists = 5;
+  }
+}
+
+// PipelineResponse wraps the result of a single pipeline operation.
+message PipelineResponse {
+  // Echoed sequence ID from the request
+  uint64 sequence_id = 1;
+  // The result of the operation
+  oneof result {
+    GetResponse get = 2;
+    SetResponse set = 3;
+    DeleteResponse delete = 4;
+    ExistsResponse exists = 5;
+  }
+  // Non-empty if the operation failed
+  string error = 6;
+}

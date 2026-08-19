@@ -1,0 +1,15 @@
+# Raw ghz output: each 200k-request run emits ~17 MB of per-request samples.
+# Distilled figures live in bench/results-summary.json and BENCHMARKS.md.
+bench/results/
+
+build/
+cmake-build-*/
+.idea/
+.vscode/
+*.o
+*.a
+*.so
+compile_commands.json
+
+__pycache__/
+*.pyc

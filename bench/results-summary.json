@@ -1,0 +1,170 @@
+{
+  "note": "Distilled from raw ghz runs; percentiles computed from per-request samples. Raw ghz JSON (~731 MB) is not committed - regenerate with bench/run.sh and bench/sweep.sh.",
+  "environment": {
+    "host": "Apple M2 Max, 12 cores, 32 GiB, macOS 26.5",
+    "runtime": "Docker Desktop, kernel 6.12.76-linuxkit, aarch64, 12 vCPU",
+    "image": "ghcr.io/celikgo/cachelib-grpc-server:1.6.0",
+    "image_digest_arm64": "sha256:9dfc794c4a93520b615a7a7182639ff78d3fbb7679b37a34d14c1a6a642ccf1b",
+    "server_cpus": "0-5",
+    "client_cpus": "6-11",
+    "load_generator": "ghz v0.120.0 (native arm64)",
+    "cache": "4 GiB DRAM, NVM disabled",
+    "workset": "200000 keys x 1024 B",
+    "requests_per_measurement": 200000
+  },
+  "operation_mix": {
+    "get": {
+      "rps": 31779.6063,
+      "count": 200000,
+      "ok": 200000,
+      "p50": 0.8051,
+      "p90": 1.7784,
+      "p99": 3.2819,
+      "p999": 6.1051,
+      "p9999": 14.9898,
+      "max": 16.5465,
+      "status_codes": {
+        "OK": 200000
+      }
+    },
+    "set": {
+      "rps": 26205.276,
+      "count": 200000,
+      "ok": 200000,
+      "p50": 0.8333,
+      "p90": 2.0488,
+      "p99": 4.0421,
+      "p999": 8.0861,
+      "p9999": 12.7118,
+      "max": 28.851,
+      "status_codes": {
+        "OK": 200000
+      }
+    },
+    "incr": {
+      "rps": 30744.9497,
+      "count": 200000,
+      "ok": 200000,
+      "p50": 0.8111,
+      "p90": 1.7891,
+      "p99": 3.3769,
+      "p999": 8.0035,
+      "p9999": 21.5255,
+      "max": 29.399,
+      "status_codes": {
+        "OK": 200000
+      }
+    },
+    "ping": {
+      "rps": 34906.9635,
+      "count": 200000,
+      "ok": 200000,
+      "p50": 0.7162,
+      "p90": 1.6061,
+      "p99": 3.0184,
+      "p999": 8.1468,
+      "p9999": 11.0636,
+      "max": 12.5941,
+      "status_codes": {
+        "OK": 200000
+      }
+    }
+  },
+  "get_concurrency_sweep": {
+    "1": {
+      "rps_median": 5222.2,
+      "rps_runs": [
+        4790.2,
+        5222.2,
+        5738.5
+      ],
+      "p50_median_ms": 0.108,
+      "p99_median_ms": 0.296,
+      "p999_median_ms": 1.474,
+      "errors": 0
+    },
+    "8": {
+      "rps_median": 12515.6,
+      "rps_runs": [
+        14770.9,
+        12515.6,
+        12322.4
+      ],
+      "p50_median_ms": 0.281,
+      "p99_median_ms": 2.617,
+      "p999_median_ms": 8.219,
+      "errors": 0
+    },
+    "25": {
+      "rps_median": 24062.2,
+      "rps_runs": [
+        24062.2,
+        24813.1,
+        21745.6
+      ],
+      "p50_median_ms": 0.475,
+      "p99_median_ms": 2.778,
+      "p999_median_ms": 10.147,
+      "errors": 0
+    },
+    "50": {
+      "rps_median": 29369.9,
+      "rps_runs": [
+        18368.8,
+        33966.1,
+        29369.9
+      ],
+      "p50_median_ms": 0.844,
+      "p99_median_ms": 3.806,
+      "p999_median_ms": 8.05,
+      "errors": 0
+    },
+    "100": {
+      "rps_median": 33359.6,
+      "rps_runs": [
+        33359.6,
+        34759.0,
+        33158.4
+      ],
+      "p50_median_ms": 1.376,
+      "p99_median_ms": 6.812,
+      "p999_median_ms": 11.576,
+      "errors": 0
+    },
+    "200": {
+      "rps_median": 36908.3,
+      "rps_runs": [
+        34835.9,
+        37221.4,
+        36908.3
+      ],
+      "p50_median_ms": 2.124,
+      "p99_median_ms": 14.17,
+      "p999_median_ms": 22.41,
+      "errors": 0
+    },
+    "400": {
+      "rps_median": 38320.3,
+      "rps_runs": [
+        29712.9,
+        38320.3,
+        39160.9
+      ],
+      "p50_median_ms": 3.671,
+      "p99_median_ms": 29.181,
+      "p999_median_ms": 43.055,
+      "errors": 0
+    }
+  },
+  "server_stats_after_run": {
+    "total_size": "4290772992",
+    "used_size": "255852544",
+    "item_count": "400000",
+    "hit_rate": 1,
+    "get_count": "200000",
+    "hit_count": "200000",
+    "set_count": "400000",
+    "uptime_seconds": "33",
+    "version": "1.6.0"
+  }
+}

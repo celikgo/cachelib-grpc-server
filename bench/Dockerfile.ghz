@@ -1,0 +1,10 @@
+# Build a ghz load-generator image natively for the host architecture.
+# Using an emulated (cross-arch) ghz makes the *client* the bottleneck and
+# produces meaningless numbers, so we always build for the native platform.
+FROM golang:1.23-alpine AS build
+RUN apk add --no-cache git
+RUN CGO_ENABLED=0 go install github.com/bojand/ghz/cmd/ghz@v0.120.0
+
+FROM alpine:3.20
+COPY --from=build /go/bin/ghz /usr/local/bin/ghz
+ENTRYPOINT ["/usr/local/bin/ghz"]
