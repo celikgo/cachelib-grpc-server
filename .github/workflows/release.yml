@@ -22,8 +22,76 @@ env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/cachelib-grpc-server
 
 jobs:
+  # Runs in ~15 seconds, ahead of a ~50-minute compile, and refuses to spend
+  # that compute on a build that would not be reproducible. The pin is the one
+  # input to this build that comes from outside the repository, so it is the
+  # one input worth checking before anything expensive happens.
+  pin:
+    name: Upstream pin
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.read.outputs.ref }}
+      short: ${{ steps.read.outputs.short }}
+      repo: ${{ steps.read.outputs.repo }}
+      date: ${{ steps.upstream.outputs.date }}
+      behind: ${{ steps.upstream.outputs.behind }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Drift guard. A commit SHA is immutable; a branch name is not. If this
+      # ever becomes `main` (or a tag, which upstream can move), the build stops
+      # being reproducible and this job fails the release rather than shipping
+      # an image nobody can rebuild.
+      - name: Pin must be an immutable commit SHA
+        id: read
+        run: |
+          set -euo pipefail
+          REF=$(grep -oE '^ARG CACHELIB_REF=[0-9a-f]{40}$' Dockerfile | head -1 | cut -d= -f2 || true)
+          if [ -z "${REF:-}" ]; then
+            echo "::error file=Dockerfile::CACHELIB_REF must pin a full 40-character commit SHA."
+            echo "Upstream CacheLib moves fast; a branch or tag here makes the release unreproducible."
+            echo "Found instead:"
+            grep -n 'CACHELIB_REF' Dockerfile || echo "  (no CACHELIB_REF at all)"
+            exit 1
+          fi
+          REPO=$(grep -oE '^ARG CACHELIB_REPO=[^[:space:]]+$' Dockerfile | head -1 | cut -d= -f2-)
+          test -n "$REPO" || { echo "::error::no CACHELIB_REPO in Dockerfile"; exit 1; }
+          {
+            echo "ref=$REF"
+            echo "short=${REF:0:12}"
+            echo "repo=$REPO"
+          } >> "$GITHUB_OUTPUT"
+          echo "pinned to $REF of $REPO"
+
+      # A SHA that does not exist upstream is just as unbuildable as a moving
+      # branch -- it can happen after an upstream force-push, or from a typo.
+      - name: Pin must resolve upstream
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REF='${{ steps.read.outputs.ref }}'
+          if ! DATE=$(gh api "repos/facebook/CacheLib/commits/$REF" \
+                        --jq '.commit.committer.date' 2>/dev/null); then
+            echo "::error::pinned revision $REF does not resolve in facebook/CacheLib."
+            exit 1
+          fi
+          echo "date=${DATE%T*}" >> "$GITHUB_OUTPUT"
+          echo "pin dates from ${DATE%T*}"
+
+          # Informational only: how far the pin now trails upstream main. This
+          # is deliberately NOT a failure -- the pin is meant to lag, and a
+          # deliberate lag is documented in the Dockerfile. It is recorded in
+          # the release notes so the distance is visible rather than forgotten.
+          BEHIND=$(gh api "repos/facebook/CacheLib/compare/$REF...main" \
+                     --jq '.ahead_by' 2>/dev/null || echo "")
+          echo "behind=${BEHIND:-unknown}" >> "$GITHUB_OUTPUT"
+          echo "upstream main is ${BEHIND:-unknown} commits ahead of the pin"
+
   build:
     name: Build ${{ matrix.arch }}
+    needs: pin
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 300
     strategy:
@@ -70,6 +138,9 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           push: true
           tags: ${{ env.IMAGE }}:${{ steps.version.outputs.version }}-${{ matrix.arch }}
+          build-args: |
+            CACHELIB_REF=${{ needs.pin.outputs.ref }}
+            CACHELIB_REPO=${{ needs.pin.outputs.repo }}
           cache-from: type=gha,scope=${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
 
@@ -85,7 +156,7 @@ jobs:
 
   manifest:
     name: Merge manifest and release
-    needs: build
+    needs: [pin, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -129,6 +200,80 @@ jobs:
           echo "$out" | grep -q linux/amd64
           echo "$out" | grep -q linux/arm64
 
+      # The other half of the drift guard. The `pin` job proved the Dockerfile
+      # pins an immutable revision; this proves the images we are about to
+      # publish were actually compiled from that revision. Without this, the
+      # revision printed in the release notes would be a claim about the
+      # Dockerfile rather than a fact about the artefact.
+      - name: Published images must carry the pinned revision
+        run: |
+          set -euo pipefail
+          EXPECTED='${{ needs.pin.outputs.ref }}'
+          rc=0
+          for arch in amd64 arm64; do
+            digest=$(cat "/tmp/digests/$arch")
+            # .Image is the config for a single-platform image, but a map
+            # keyed by platform if buildx ever hands back a multi-platform
+            # one. Accept either rather than silently reading "".
+            got=$(docker buildx imagetools inspect "$IMAGE@$digest" --format '{{json .Image}}' \
+                    | jq -r 'if has("config") then . else (to_entries[0].value) end
+                             | .config.Labels["io.celikgo.cachelib.upstream.revision"] // ""')
+            if [ "$got" != "$EXPECTED" ]; then
+              echo "::error::$arch image was built from '${got:-<unlabelled>}', but the pin is '$EXPECTED'"
+              rc=1
+            else
+              echo "$arch: built from $got"
+            fi
+          done
+          exit $rc
+
+      - name: Assemble release assets
+        id: assets
+        run: |
+          set -euo pipefail
+          V="${{ steps.manifest.outputs.version }}"
+          mkdir -p dist
+
+          # The service definition, so a client author can generate stubs from
+          # the release without cloning the repository.
+          cp proto/cache.proto dist/cache.proto
+
+          # Machine-readable provenance: what to pull, and what it was built
+          # from. This is the file to diff when asking "did anything about the
+          # build inputs change between two releases?".
+          cat > dist/provenance.json <<JSON
+          {
+            "version": "$V",
+            "repository": "https://github.com/${{ github.repository }}",
+            "commit": "${{ github.sha }}",
+            "image": "$IMAGE:$V",
+            "digests": {
+              "index": "${{ steps.manifest.outputs.list }}",
+              "linux/amd64": "${{ steps.manifest.outputs.amd64 }}",
+              "linux/arm64": "${{ steps.manifest.outputs.arm64 }}"
+            },
+            "upstream": {
+              "project": "CacheLib",
+              "repository": "${{ needs.pin.outputs.repo }}",
+              "revision": "${{ needs.pin.outputs.ref }}",
+              "revision_date": "${{ needs.pin.outputs.date }}",
+              "commits_behind_upstream_main": "${{ needs.pin.outputs.behind }}",
+              "vendored": false
+            },
+            "license": "Apache-2.0"
+          }
+          JSON
+          jq . dist/provenance.json > /dev/null   # fail loudly on malformed JSON
+
+          # The measured benchmark data behind BENCHMARKS.md.
+          cp bench/results-summary.json dist/benchmark-results.json
+
+          cp LICENSE dist/LICENSE
+          cp NOTICE dist/NOTICE
+
+          ( cd dist && sha256sum ./* > SHA256SUMS )
+          ls -l dist
+
       - name: Write release notes
         run: |
           V="${{ steps.manifest.outputs.version }}"
@@ -153,6 +298,41 @@ jobs:
           docker pull $IMAGE@${{ steps.manifest.outputs.list }}
           \`\`\`
 
+          ## Upstream CacheLib
+
+          This server consumes [Meta's CacheLib](https://github.com/facebook/CacheLib)
+          as a build dependency; it is **not** vendored into this repository. These
+          images were compiled against exactly one upstream revision, and the release
+          workflow verifies that the published images carry it:
+
+          | | |
+          |---|---|
+          | Upstream | [\`facebook/CacheLib\`](${{ needs.pin.outputs.repo }}) |
+          | Revision | [\`${{ needs.pin.outputs.ref }}\`](https://github.com/facebook/CacheLib/commit/${{ needs.pin.outputs.ref }}) |
+          | Revision date | ${{ needs.pin.outputs.date }} |
+          | Commits behind upstream \`main\` | ${{ needs.pin.outputs.behind }} |
+
+          Rebuild this exact image:
+
+          \`\`\`bash
+          git clone https://github.com/${{ github.repository }} && cd cachelib-grpc-server
+          git checkout v$V
+          docker build --build-arg CACHELIB_REF=${{ needs.pin.outputs.ref }} -t cachelib-grpc-server .
+          \`\`\`
+
+          CacheLib is licensed under Apache-2.0; see [\`NOTICE\`](https://github.com/${{ github.repository }}/blob/main/NOTICE).
+          This project is not affiliated with, sponsored by, or endorsed by Meta Platforms, Inc.
+
+          ## Attached assets
+
+          | File | What it is |
+          |---|---|
+          | \`cache.proto\` | Service definition, for generating clients without cloning |
+          | \`provenance.json\` | Image digests and the exact upstream revision, machine-readable |
+          | \`benchmark-results.json\` | Raw measurements behind [BENCHMARKS.md](https://github.com/${{ github.repository }}/blob/main/BENCHMARKS.md) |
+          | \`LICENSE\`, \`NOTICE\` | Apache-2.0 and upstream attribution |
+          | \`SHA256SUMS\` | Checksums for all of the above |
+
           See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
           for what changed, and [BENCHMARKS.md](https://github.com/${{ github.repository }}/blob/main/BENCHMARKS.md)
           for measured performance.
@@ -166,3 +346,10 @@ jobs:
           name: v${{ steps.manifest.outputs.version }}
           body_path: notes.md
           generate_release_notes: true
+          files: |
+            dist/cache.proto
+            dist/provenance.json
+            dist/benchmark-results.json
+            dist/LICENSE
+            dist/NOTICE
+            dist/SHA256SUMS

@@ -42,6 +42,29 @@ No change to the RPC surface or the wire format: v1.6.x clients work unchanged.
   image was built from, rather than the newest commit: later upstream revisions
   bump mvfst to a version that does not compile under GCC 13 on Ubuntu 24.04.
 - OCI image labels, including `org.opencontainers.image.source`.
+- The release workflow records the exact upstream CacheLib revision each
+  release was built against, in the release notes and in a machine-readable
+  `provenance.json` asset, alongside the image digests.
+- A `pin` job that fails the release if `CACHELIB_REF` is not a full 40-character
+  commit SHA, or does not resolve upstream. It runs in ~15 seconds, ahead of the
+  ~50-minute compile, so an unreproducible build is rejected before it costs
+  anything. It also reports how far the pin trails upstream `main`.
+- The runtime image is stamped with the upstream revision it was compiled
+  against (`io.celikgo.cachelib.upstream.revision`), and the release workflow
+  reads that label back off the pushed images and fails if it disagrees with the
+  Dockerfile pin. The revision in the release notes is therefore a fact about
+  the artefact, not a claim about the source tree.
+- Releases carry assets: `cache.proto`, `provenance.json`,
+  `benchmark-results.json`, `LICENSE`, `NOTICE` and `SHA256SUMS`.
+
+### Fixed
+- The `1.7.0` release failed to publish: both architectures compiled for ~48
+  minutes and then hit `denied: permission_denied: write_package` on push. The
+  `ghcr.io/celikgo/cachelib-grpc-server` package had been left with no linked
+  repository when the server was extracted out of the fork, and an orphaned
+  user-scoped package grants no repository `GITHUB_TOKEN` write access. The
+  package is now linked to this repository, so `GITHUB_TOKEN` inherits write
+  access; the 25 previously published versions were preserved.
 
 ## [1.6.0] — 2026-05-02
 
