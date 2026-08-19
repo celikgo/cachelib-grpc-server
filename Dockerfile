@@ -106,8 +106,12 @@ RUN git clone --depth 1 --branch v0.9.5 https://github.com/Neargye/magic_enum.gi
 
 # Clone CacheLib from GitHub (ensures all dependencies are properly fetched)
 ARG CACHELIB_REPO=https://github.com/facebook/CacheLib.git
-ARG CACHELIB_BRANCH=main
-RUN git clone --depth 1 -b ${CACHELIB_BRANCH} ${CACHELIB_REPO} CacheLib
+# Pinned to a commit, not a branch: cloning `main` means rebuilding a release
+# tag pulls whatever upstream happens to be that day, so the build would not
+# reproduce the release. Override to track a different upstream revision.
+ARG CACHELIB_REF=6c222303ec8ca0654700b1dd01deb8c113d70321
+RUN git clone ${CACHELIB_REPO} CacheLib && \
+    cd CacheLib && git checkout --detach ${CACHELIB_REF}
 
 # Copy this repository (the gRPC server) into the upstream tree as a subproject.
 COPY CMakeLists.txt build.sh /build/CacheLib/standalone_server/

@@ -178,11 +178,13 @@ docker build -t cachelib-grpc-server .
 docker build --target tester -t cachelib-grpc-server:test .   # build + run unit tests
 ```
 
-Upstream CacheLib is cloned during the build and can be repointed:
+Upstream CacheLib is cloned during the build at a **pinned commit**, so
+rebuilding a release tag reproduces that release rather than picking up whatever
+upstream happens to be that day. Repoint it explicitly to track a newer
+revision:
 
 ```bash
-docker build --build-arg CACHELIB_BRANCH=main \
-             --build-arg CACHELIB_REPO=https://github.com/facebook/CacheLib.git .
+docker build --build-arg CACHELIB_REF=<commit-sha> .
 ```
 
 A host build via `./build.sh` exists and expects CacheLib and its dependencies
