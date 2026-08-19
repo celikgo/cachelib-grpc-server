@@ -5,7 +5,13 @@ this server lived as `standalone_server/` before being extracted into its own
 repository. Container images for every version below are published to
 [`ghcr.io/celikgo/cachelib-grpc-server`][pkg].
 
-## [Unreleased]
+## [1.7.0] — 2026-08-19
+
+First release built and published by this repository's own CI, on native
+`amd64` and `arm64` runners rather than under QEMU emulation.
+
+No change to the RPC surface or the wire format: v1.6.x clients work unchanged.
+`Stats.version` now reports `1.7.0`.
 
 ### Changed
 - Extracted from the `celikgo/CacheLib` fork into a standalone repository.
@@ -23,6 +29,10 @@ repository. Container images for every version below are published to
   [`BENCHMARKS.md`](BENCHMARKS.md) with measured throughput and tail latency.
 - CI: build, unit tests, and multi-arch (`amd64` + `arm64`) container builds.
 - `latest` container tag, tracking the newest release.
+- Upstream CacheLib is pinned to an explicit commit (`ARG CACHELIB_REF`).
+  Previously the build cloned `main`, so rebuilding a release tag pulled
+  whatever upstream was that day and did not reproduce the release.
+- OCI image labels, including `org.opencontainers.image.source`.
 
 ## [1.6.0] — 2026-05-02
 
