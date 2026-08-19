@@ -38,6 +38,9 @@ No change to the RPC surface or the wire format: v1.6.x clients work unchanged.
   declared a `double-conversion` dependency upstream had removed and the build
   failed with `ManifestNotFound`. A diff cannot drift silently. CI verifies
   they still apply, in ~20 seconds, on every push.
+- The pin is upstream main as of 2026-05-02, the revision the last known-good
+  image was built from, rather than the newest commit: later upstream revisions
+  bump mvfst to a version that does not compile under GCC 13 on Ubuntu 24.04.
 - OCI image labels, including `org.opencontainers.image.source`.
 
 ## [1.6.0] — 2026-05-02

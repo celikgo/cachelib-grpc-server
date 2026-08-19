@@ -106,10 +106,21 @@ RUN git clone --depth 1 --branch v0.9.5 https://github.com/Neargye/magic_enum.gi
 
 # Clone CacheLib from GitHub (ensures all dependencies are properly fetched)
 ARG CACHELIB_REPO=https://github.com/facebook/CacheLib.git
-# Pinned to a commit, not a branch: cloning `main` means rebuilding a release
-# tag pulls whatever upstream happens to be that day, so the build would not
-# reproduce the release. Override to track a different upstream revision.
-ARG CACHELIB_REF=6c222303ec8ca0654700b1dd01deb8c113d70321
+# Pinned to a commit, not a branch. Two reasons:
+#
+#  1. Reproducibility. Cloning `main` means rebuilding a release tag pulls
+#     whatever upstream happens to be that day, so the build would not
+#     reproduce the release.
+#  2. Buildability. This is upstream main as of 2026-05-02, the revision the
+#     last known-good published image (1.6.0) was built from. Later upstream
+#     revisions bump mvfst to a version that does not compile under GCC 13 on
+#     Ubuntu 24.04 (`default member initializer ... required before the end of
+#     its enclosing class` in quic::DatagramFlowManager), which fails the build
+#     roughly 30 minutes in.
+#
+# Bumping this is a deliberate act: re-cut patches/ against the new revision
+# (they will stop applying, by design) and confirm mvfst still compiles.
+ARG CACHELIB_REF=2aa2afbe97deadfb00f15260b26b566354c57a78
 RUN git clone ${CACHELIB_REPO} CacheLib && \
     cd CacheLib && git checkout --detach ${CACHELIB_REF}
 

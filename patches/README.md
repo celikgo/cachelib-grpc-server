@@ -38,4 +38,21 @@ To move to a newer upstream revision: bump `CACHELIB_REF`, run the check above,
 and if a patch no longer applies, re-cut it against the new revision rather than
 force-fitting the old one.
 
+## Why the pin sits where it does
+
+`CACHELIB_REF` is upstream main as of 2026-05-02 — the revision the last
+known-good published image (1.6.0) was built from. It is not the newest
+upstream commit, deliberately: later revisions bump mvfst to a version that
+does not compile under GCC 13 on Ubuntu 24.04, failing about 30 minutes into
+the build with
+
+```
+error: default member initializer for 'quic::DatagramFlowManager::QueuedDatagram::enqueueTime'
+       required before the end of its enclosing class
+```
+
+That is an upstream/toolchain incompatibility, not something this repository
+introduces. Moving the pin forward means either waiting for upstream to fix
+mvfst, or moving the build image to a compiler that accepts it.
+
 [up]: https://github.com/facebook/CacheLib
