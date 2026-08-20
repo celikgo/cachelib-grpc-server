@@ -89,9 +89,56 @@ jobs:
           echo "behind=${BEHIND:-unknown}" >> "$GITHUB_OUTPUT"
           echo "upstream main is ${BEHIND:-unknown} commits ahead of the pin"
 
+  # Two ~50-minute release runs were burned discovering, at the push step, that
+  # GITHUB_TOKEN could not write to the package: it existed but had never granted
+  # this repository Actions write access. GHCR issues a scoped token up front and
+  # will say what it granted, so ask it before spending an hour compiling.
+  #
+  # Note that linking the package to a repository (via the image's
+  # org.opencontainers.image.source label) is NOT the same thing and does NOT
+  # grant this -- the access list is a separate, UI-only setting.
+  preflight:
+    name: Registry write access
+    runs-on: ubuntu-latest
+    steps:
+      - name: GITHUB_TOKEN must be able to push to the package
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_PASS: ${{ secrets.GITHUB_TOKEN }}
+          PKG: ${{ github.repository_owner }}/cachelib-grpc-server
+        run: |
+          set -euo pipefail
+          jwt=$(curl -fsSL -u "$GHCR_USER:$GHCR_PASS" \
+                  "https://ghcr.io/token?service=ghcr.io&scope=repository:${PKG}:pull,push" \
+                | jq -r '.token // empty') || jwt=""
+          if [ -z "$jwt" ]; then
+            echo "::warning::could not obtain a GHCR token; skipping preflight"
+            exit 0
+          fi
+          # JWT payload is base64url without padding; restore both before decoding.
+          payload=$(printf '%s' "$jwt" | cut -d. -f2 | tr '_-' '/+' \
+                    | awk '{ while (length($0) % 4) $0 = $0 "="; print }' \
+                    | base64 -d 2>/dev/null) || payload=""
+          if [ -z "$payload" ]; then
+            echo "::warning::could not decode the GHCR token; skipping preflight"
+            exit 0
+          fi
+          granted=$(printf '%s' "$payload" \
+                    | jq -r '[.access[]? | select(.name == env.PKG) | .actions[]?] | join(",")')
+          echo "granted on $PKG: ${granted:-<none>}"
+          case ",$granted," in
+            *,push,*) echo "push access confirmed"; exit 0 ;;
+          esac
+          echo "::error::GITHUB_TOKEN cannot push to ghcr.io/$PKG (granted: ${granted:-none})."
+          echo "The package exists but has not granted this repository Actions write access."
+          echo "Fix it at:"
+          echo "  https://github.com/users/${{ github.repository_owner }}/packages/container/cachelib-grpc-server/settings"
+          echo "  -> Manage Actions access -> Add repository -> cachelib-grpc-server -> role Write"
+          exit 1
+
   build:
     name: Build ${{ matrix.arch }}
-    needs: pin
+    needs: [pin, preflight]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 300
     strategy:

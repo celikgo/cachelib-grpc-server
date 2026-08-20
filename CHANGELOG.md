@@ -56,15 +56,21 @@ No change to the RPC surface or the wire format: v1.6.x clients work unchanged.
   the artefact, not a claim about the source tree.
 - Releases carry assets: `cache.proto`, `provenance.json`,
   `benchmark-results.json`, `LICENSE`, `NOTICE` and `SHA256SUMS`.
+- A `preflight` job that asks GHCR, before the build starts, whether
+  `GITHUB_TOKEN` may actually push to the package, and stops the release in
+  about a second if it may not. Three release runs had already been spent
+  discovering that at the push step, each after ~50 minutes of compilation.
 
 ### Fixed
 - The `1.7.0` release failed to publish: both architectures compiled for ~48
-  minutes and then hit `denied: permission_denied: write_package` on push. The
-  `ghcr.io/celikgo/cachelib-grpc-server` package had been left with no linked
-  repository when the server was extracted out of the fork, and an orphaned
-  user-scoped package grants no repository `GITHUB_TOKEN` write access. The
-  package is now linked to this repository, so `GITHUB_TOKEN` inherits write
-  access; the 25 previously published versions were preserved.
+  minutes and then hit `denied: permission_denied: write_package` on push. When
+  the server was extracted out of the fork, the
+  `ghcr.io/celikgo/cachelib-grpc-server` package was left both unlinked from any
+  repository and without this repository on its Actions access list. The package
+  is now linked here (its images carry `org.opencontainers.image.source`), and
+  the repository was granted `Write` in the package's Actions access list --
+  these are two separate settings, and only the second one grants push. The 25
+  previously published versions were preserved throughout.
 
 ## [1.6.0] — 2026-05-02
 
