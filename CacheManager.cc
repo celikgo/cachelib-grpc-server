@@ -98,10 +98,19 @@ bool CacheManager::initialize() {
     // Create the cache
     cache_ = std::make_unique<Cache>(cacheConfig);
 
-    // Add the default pool using all available memory
+    // Add the default pool using all available memory.
+    //
+    // The MMLru config is what makes --lru_refresh_time mean anything. It was
+    // parsed, copied into CacheConfig and logged at startup, but addPool was
+    // called without it, so the documented knob could not have had any effect.
+    // Defaults otherwise: promote on read and on write, as CacheLib does.
+    Cache::MMConfig mmConfig(
+        config_.lruRefreshTime, true /* updateOnWrite */, true /* updateOnRead */);
     defaultPoolId_ = cache_->addPool(
         config_.defaultPoolName,
-        cache_->getCacheMemoryStats().ramCacheSize);
+        cache_->getCacheMemoryStats().ramCacheSize,
+        {} /* allocSizes: use the defaults */,
+        mmConfig);
 
     startTime_ = std::chrono::steady_clock::now();
 
