@@ -145,7 +145,7 @@ Flags are passed to the container as arguments.
 | `--nvm_block_size` | `4096` | Flash block size |
 | `--nvm_reader_threads` | `32` | Flash reader threads |
 | `--nvm_writer_threads` | `32` | Flash writer threads |
-| `--enable_io_uring` | `true` | io_uring for flash I/O |
+| `--enable_io_uring` | `true` | io_uring for flash I/O — **inert in the published images**, see below |
 
 > **The largest value you can actually store** is
 > `min(--max_item_size, 4 MiB − 32 − len(key))`. CacheLib cannot allocate an
@@ -185,11 +185,16 @@ and its remove result only see DRAM:
   Do not drive idempotency or lock-ownership decisions off that flag on a
   hybrid deployment.
 
-> **Note on `--enable_io_uring`.** The published images are built against a
-> folly configured without `io_uring` (see [`patches/`](patches/)), because the
-> Docker Desktop VM kernel does not expose what folly probes for. On a host
-> kernel with full `io_uring` support you will want to rebuild rather than rely
-> on the published image for flash-heavy workloads.
+> **Note on `--enable_io_uring`.** The flag does nothing in the published
+> images. They are built against a folly configured without `io_uring` (see
+> [`patches/`](patches/)), so `liburing` is absent at compile time, CacheLib's
+> CMake defines `CACHELIB_IOURING_DISABLE`, and the io_uring paths are compiled
+> out of Navy entirely — `nm` on `libcachelib_navy.a` finds no io_uring symbols
+> at all. Flash I/O uses libaio regardless of what you pass. Setting it to
+> `true` is not an error; it simply has no effect.
+>
+> On a host kernel with full `io_uring` support, rebuild with `liburing` present
+> rather than relying on the published image for flash-heavy workloads.
 
 ### docker-compose
 

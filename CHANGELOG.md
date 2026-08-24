@@ -79,6 +79,13 @@ authentication.
   `FlushRequest.include_nvm` being unimplemented, and — with the flash tier on —
   `Scan` and `Flush` not seeing flash-resident keys and `Delete.key_existed`
   reporting DRAM residency rather than existence.
+- `--enable_io_uring` is documented as inert in the published images. `liburing`
+  is absent at build time, so CacheLib's CMake defines
+  `CACHELIB_IOURING_DISABLE` and the io_uring paths are compiled out of Navy
+  entirely; `nm` on `libcachelib_navy.a` finds no io_uring symbols. Flash I/O
+  uses libaio whatever the flag says, and the flag defaults to `true`.
+- `Scan` was described as "O(n) over the cache", which reads as O(keys). It is
+  O(configured cache size), because it iterates the hash table.
 
 ## [1.7.0] — tagged 2026-08-19, never published
 
