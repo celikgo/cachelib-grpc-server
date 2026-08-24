@@ -5,10 +5,91 @@ this server lived as `standalone_server/` before being extracted into its own
 repository. Container images for every version below are published to
 [`ghcr.io/celikgo/cachelib-grpc-server`][pkg].
 
-## [1.7.0] — 2026-08-19
+## [1.8.0] — unreleased
 
-First release built and published by this repository's own CI, on native
-`amd64` and `arm64` runners rather than under QEMU emulation.
+Correctness release. Three defects here could lose or corrupt a user's data or
+take the server down, and none of them had a test that would have caught it.
+
+**The hybrid DRAM+SSD tier has never worked.** Running the command in the
+README's "Hybrid DRAM + SSD" section against any published image exits at
+startup with `number of read/write threads should be set first as non-zero
+value`. `configureNvmCache` called `NavyConfig::enableAsyncIo()` with the
+reader/writer thread counts in the parameters that mean `maxNumReads` and
+`maxNumWrites`, without the `setReaderAndWriterThreads()` call that overload
+requires first.
+
+**`Incr` and `Increment` destroyed data.** `std::from_chars` parses the longest
+valid prefix and reports success; the code checked only the error code and
+never the end pointer, so `"42 users"` incremented to `"43"` and the rest of
+the value was gone, with the RPC reporting success. They also wrapped on
+overflow — `Incr` on `INT64_MAX` returned `INT64_MIN`, which for the
+fixed-window rate limiter `Incr` exists to serve means every later limit check
+passes.
+
+**`Scan` was a remotely-triggerable denial of service.** The glob pattern was
+compiled into a regular expression, once per key; alternating wildcards with
+literals made it backtrack exponentially. A 25-byte pattern pinned a core
+indefinitely and kept running after the client disconnected — on a port with no
+authentication.
+
+### Fixed
+- `--enable_nvm` starts. Navy's reader and writer thread counts are set before
+  async I/O is enabled.
+- `Incr`, `Increment` and `Decrement` reject a value that is not entirely an
+  integer instead of overwriting it, and refuse to overflow instead of wrapping.
+  `Decrement` also rejects the one delta whose negation overflows.
+- `Scan`'s pattern matcher is a linear iterative wildcard matcher rather than a
+  regular expression. Behaviour is unchanged — differential-tested against the
+  old semantics over 1,563,485 (key, pattern) pairs with zero disagreements —
+  and the pathological patterns now complete in microseconds.
+- `--lru_refresh_time` reaches the LRU. It was parsed, logged, and read by
+  nothing, because `addPool` was called without an MMLru config.
+- The Dockerfile's `tester` stage runs `ctest`, so both test binaries execute.
+  It built and ran `cache_manager_test` only, so 15 of the 35 existing tests had
+  never run in CI — including one, `CacheServiceTest.Stats`, that could not have
+  passed.
+
+### Changed
+- The hash table is sized from `--cache_size` instead of a hardcoded 2^25
+  buckets. `Scan` and `Flush` iterate the table rather than the items, so their
+  cost was the bucket count regardless of how much was cached: a `Scan` over a
+  cache holding nine keys took 2.23 seconds. Override with
+  `CacheConfig::hashBucketsPower`.
+- The CI smoke job builds and tests the image from the checkout. It pulled
+  `:latest`, so the fastest job in the pipeline proved nothing about the change
+  under review, and it now also starts the server with `--enable_nvm`.
+
+### Added
+- 150 tests, up from 35. First coverage for `SetNX`, `Increment`, `Decrement`,
+  `Incr`, `CompareAndSwap`, `Touch`, `GetTTL`, `MultiDelete`, `Flush`,
+  `Pipeline` and the hybrid tier.
+- A nightly ASan + UBSan run, and `docs/sanitizers.md` stating what it covers
+  and why there is no ThreadSanitizer job.
+- A fuzz target over the request-decode path, with its corpus replayed on every
+  CI build.
+- `bench/summarize.py` and `bench/all.sh`: the published numbers are now derived
+  from the raw runs by committed commands, and CI fails if the markdown and the
+  measurement disagree.
+- `CLAUDE.md` and two skills, `adding-an-rpc` and `updating-the-cachelib-pin`.
+
+### Documentation
+- `proto/cache.proto` and `README.md` corrected where they promised more than
+  the code delivers: the real value-size ceiling, `Scan`'s best-effort cursor,
+  `Increment`'s TTL behaviour, `StatsRequest.detailed` and
+  `FlushRequest.include_nvm` being unimplemented, and — with the flash tier on —
+  `Scan` and `Flush` not seeing flash-resident keys and `Delete.key_existed`
+  reporting DRAM residency rather than existence.
+
+## [1.7.0] — tagged 2026-08-19, never published
+
+The `v1.7.0` tag exists but no image or GitHub release does: the Release
+workflow failed three times at `denied: permission_denied: write_package`. The
+package exists but has not granted this repository Actions write access, which
+is a separate, UI-only setting. `ghcr.io/celikgo/cachelib-grpc-server:latest`
+still resolves to 1.6.0.
+
+Intended as the first release built and published by this repository's own CI,
+on native `amd64` and `arm64` runners rather than under QEMU emulation.
 
 No change to the RPC surface or the wire format: v1.6.x clients work unchanged.
 `Stats.version` now reports `1.7.0`.
