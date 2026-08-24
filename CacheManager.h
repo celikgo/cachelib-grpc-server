@@ -72,6 +72,10 @@ struct CacheConfig {
 
   // Maximum item size (default: 4MB)
   size_t maxItemSize = 4 * 1024 * 1024;
+
+  // log2 of the number of hash table buckets. 0 means derive it from
+  // cacheSize; see CacheManager::hashBucketsPower.
+  uint32_t hashBucketsPower = 0;
 };
 
 // Result of a Get operation
@@ -273,6 +277,9 @@ class CacheManager {
  private:
   // Configure NVM cache if enabled
   void configureNvmCache(CacheAllocatorConfig& cacheConfig);
+
+  // log2 of the hash table bucket count to use for this configuration.
+  uint32_t hashBucketsPower() const;
 
   // Helper for atomic numeric operations
   IncrDecrResult atomicAddValue(std::string_view key, int64_t delta, uint32_t ttlSeconds);

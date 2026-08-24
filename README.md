@@ -114,8 +114,10 @@ A few worth calling out:
   silently reset expiry.
 - **`Pipeline`** amortises per-RPC overhead across a stream — worth reaching for
   given that transport, not the cache, is what limits throughput.
-- **`Scan`** is O(n) over the cache and is a debugging and administration tool,
-  not something to put on a request path. Its cursor is **best effort**, not a
+- **`Scan`** walks CacheLib's hash table, so its cost tracks the *configured
+  cache size*, not the number of keys stored — a scan of an almost-empty 1 GiB
+  cache costs the same as a scan of a full one. It is a debugging and
+  administration tool, not something to put on a request path. Its cursor is **best effort**, not a
   snapshot: the cursor is the previous page's last key, and resuming re-walks
   the cache and skips until it sees that key — so if the cursor key is deleted
   between pages, the resumed page comes back empty and the iteration ends

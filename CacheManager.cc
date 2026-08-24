@@ -14,6 +14,7 @@
 
 #include "CacheManager.h"
 
+#include <algorithm>
 #include <charconv>
 #include <limits>
 #include <cstring>
@@ -69,6 +70,48 @@ bool checkedNegate(int64_t delta, int64_t& out) {
 
 }  // namespace
 
+// Hash table sizing.
+//
+// The bucket count used to be hardcoded at 2^25 -- 33.5 million buckets --
+// whatever the cache size was. Two consequences, both measured.
+//
+// Memory: the table is allocated up front, so a 64 MiB test cache carried a
+// hash table larger than the cache itself, and the 1 GiB default carried
+// 33.5M buckets sized for a cache tens of times bigger.
+//
+// Time: Scan and Flush iterate the table, not the items, so their cost is the
+// bucket count and has nothing to do with how much is cached. On the published
+// 1.6.0 image a Scan over a cache holding NINE keys took 2.23 seconds.
+//
+// Derived instead from the cache size, assuming a 256-byte average item --
+// deliberately pessimistic, since smaller items mean more of them and longer
+// chains are what a too-small table costs. Clamped to [kMinHashBucketsPower,
+// kMaxHashBucketsPower]; the ceiling is the old fixed value, so a cache large
+// enough to have justified it still gets it. Override with
+// CacheConfig::hashBucketsPower when the average item size is known.
+namespace {
+
+constexpr uint32_t kMinHashBucketsPower = 16;   // 65,536 buckets
+constexpr uint32_t kMaxHashBucketsPower = 25;   // 33.5M, the old fixed value
+constexpr uint32_t kHashLocksPower = 10;        // 1,024 locks, as before
+constexpr size_t kAssumedAverageItemSize = 256;
+
+}  // namespace
+
+uint32_t CacheManager::hashBucketsPower() const {
+  if (config_.hashBucketsPower != 0) {
+    return std::clamp(config_.hashBucketsPower, kMinHashBucketsPower,
+                      kMaxHashBucketsPower);
+  }
+  size_t estimatedItems = config_.cacheSize / kAssumedAverageItemSize;
+  uint32_t power = kMinHashBucketsPower;
+  while (power < kMaxHashBucketsPower &&
+         (static_cast<size_t>(1) << power) < estimatedItems) {
+    ++power;
+  }
+  return power;
+}
+
 CacheManager::CacheManager(const CacheConfig& config) : config_(config) {
   XLOG(INFO) << "CacheManager created with config:"
              << " cacheName=" << config_.cacheName
@@ -85,9 +128,11 @@ bool CacheManager::initialize() {
     CacheAllocatorConfig cacheConfig;
 
     // Basic configuration
+    const uint32_t bucketsPower = hashBucketsPower();
     cacheConfig.setCacheName(config_.cacheName)
         .setCacheSize(config_.cacheSize)
-        .setAccessConfig({25, 10})  // Hash table config
+        .setAccessConfig(
+            {bucketsPower, std::min<uint32_t>(bucketsPower, kHashLocksPower)})
         .validate();
 
     // Configure NVM if enabled
@@ -115,6 +160,7 @@ bool CacheManager::initialize() {
     startTime_ = std::chrono::steady_clock::now();
 
     XLOG(INFO) << "CacheManager initialized successfully"
+               << " hashBuckets=2^" << bucketsPower
                << " poolId=" << static_cast<int>(defaultPoolId_)
                << " poolSize=" << cache_->getCacheMemoryStats().ramCacheSize;
 
