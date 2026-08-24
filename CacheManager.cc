@@ -148,9 +148,15 @@ bool CacheManager::initialize() {
     // The MMLru config is what makes --lru_refresh_time mean anything. It was
     // parsed, copied into CacheConfig and logged at startup, but addPool was
     // called without it, so the documented knob could not have had any effect.
-    // Defaults otherwise: promote on read and on write, as CacheLib does.
-    Cache::MMConfig mmConfig(
-        config_.lruRefreshTime, true /* updateOnWrite */, true /* updateOnRead */);
+    //
+    // The promotion flags are CacheLib's own defaults (MMLru.h: updateOnWrite
+    // false, updateOnRead true), so this changes the refresh time and nothing
+    // else. Promoting on write would alter eviction order and add contention
+    // on the LRU lock, which is not what a flag called --lru_refresh_time
+    // should do.
+    Cache::MMConfig mmConfig(config_.lruRefreshTime,
+                             false /* updateOnWrite */,
+                             true /* updateOnRead */);
     defaultPoolId_ = cache_->addPool(
         config_.defaultPoolName,
         cache_->getCacheMemoryStats().ramCacheSize,

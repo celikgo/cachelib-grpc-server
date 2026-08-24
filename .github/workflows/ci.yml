@@ -195,28 +195,42 @@ jobs:
       # NavyConfig::enableAsyncIo() without setting the reader/writer thread
       # counts first -- and no job would have noticed, because nothing ever
       # started the server with --enable_nvm.
+      #
+      # Deliberately not `set -e` around the wait: the whole value of this step
+      # when it fails is the server's own log, and an -e that fires inside the
+      # loop takes the diagnostic with it.
       - name: Hybrid DRAM + SSD tier starts and serves
         run: |
-          set -euo pipefail
           docker run -d --name cache-nvm -p 50052:50051 cachelib-grpc-server:ci \
             --cache_size=134217728 --enable_nvm --nvm_path=/data/nvm/cache \
-            --nvm_size=268435456
+            --nvm_size=268435456 --enable_io_uring=false
+
           for _ in $(seq 1 60); do
-            [ "$(docker inspect -f '{{.State.Health.Status}}' cache-nvm)" = healthy ] && break
+            state=$(docker inspect -f '{{.State.Status}}' cache-nvm 2>/dev/null || echo missing)
+            health=$(docker inspect -f '{{.State.Health.Status}}' cache-nvm 2>/dev/null || echo none)
+            echo "state=$state health=$health"
+            [ "$health" = healthy ] && break
+            [ "$state" = exited ] && break
             sleep 2
           done
-          if [ "$(docker inspect -f '{{.State.Health.Status}}' cache-nvm)" != healthy ]; then
-            echo "::error::the server did not come up with --enable_nvm"
-            docker logs cache-nvm
+
+          echo "----- cache-nvm logs -----"
+          docker logs cache-nvm 2>&1 || true
+          echo "--------------------------"
+
+          if [ "$(docker inspect -f '{{.State.Health.Status}}' cache-nvm 2>/dev/null)" != healthy ]; then
+            echo "::error::the server did not come up with --enable_nvm (see the log above)"
             exit 1
           fi
+
+          set -euo pipefail
           V=$(printf hybrid | base64)
           grpcurl -plaintext -d "{\"key\":\"h1\",\"value\":\"$V\"}" \
             localhost:50052 cachelib.grpc.CacheService/Set | grep -q '"success": true'
           grpcurl -plaintext -d '{"key":"h1"}' \
             localhost:50052 cachelib.grpc.CacheService/Get | grep -q '"found": true'
           grpcurl -plaintext -d '{}' localhost:50052 cachelib.grpc.CacheService/Stats \
-            | grep -q '"nvmEnabled": true'
+            | grep -q '"nvm_enabled": true'
 
       - name: Server logs
         if: always()
