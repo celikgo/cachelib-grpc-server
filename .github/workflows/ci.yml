@@ -110,17 +110,13 @@ jobs:
           fi
           echo "io_uring disabled in folly as expected"
 
-  # Smoke-test the RPC surface of the image built FROM THIS CHECKOUT.
-  #
-  # This job used to pull ghcr.io/celikgo/cachelib-grpc-server:latest, which is
-  # whatever was last released -- so the fastest and most reassuring job in the
-  # pipeline proved nothing whatsoever about the pull request it was running
-  # on. It shares the buildx gha cache with the `build` job, so on a warm cache
-  # it costs a couple of minutes rather than the full compile.
-  smoke:
-    name: Smoke test the image from this checkout
+  # Full source build plus unit tests. Slow: compiles gRPC, folly, fbthrift and
+  # CacheLib from source. amd64 only here; the arm64 build runs at release time
+  # on a native arm64 runner.
+  build:
+    name: Build + unit tests (amd64)
     runs-on: ubuntu-latest
-    timeout-minutes: 200
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
@@ -131,29 +127,43 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build the image under test
+      - name: Build image and run unit tests
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: tester
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The runtime image shares every layer below the server build with the
+      # tester image just built, so this is cheap. Smoke-testing lives here
+      # rather than in its own job because a separate job would compile gRPC,
+      # folly, fbthrift and CacheLib a second time, concurrently, from the same
+      # cold cache -- twice the runner time for one signal.
+      - name: Build the runtime image
         uses: docker/build-push-action@v6
         with:
           context: .
           load: true
-          tags: cachelib-grpc-server:pr
+          tags: cachelib-grpc-server:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Start server
-        run: |
-          docker run -d --name cache -p 50051:50051 -p 9090:9090 \
-            cachelib-grpc-server:pr
-          for _ in $(seq 1 60); do
-            [ "$(docker inspect -f '{{.State.Health.Status}}' cache)" = healthy ] && break
-            sleep 2
-          done
-          docker inspect -f '{{.State.Health.Status}}' cache | grep -q healthy
 
       - name: Install grpcurl
         run: |
           curl -sSL https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_x86_64.tar.gz \
             | sudo tar -xz -C /usr/local/bin grpcurl
+
+      - name: Start server
+        run: |
+          docker run -d --name cache -p 50051:50051 -p 9090:9090 \
+            cachelib-grpc-server:ci
+          for _ in $(seq 1 60); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' cache)" = healthy ] && break
+            sleep 2
+          done
+          docker inspect -f '{{.State.Health.Status}}' cache | grep -q healthy
 
       - name: Exercise the RPC surface
         run: |
@@ -188,7 +198,7 @@ jobs:
       - name: Hybrid DRAM + SSD tier starts and serves
         run: |
           set -euo pipefail
-          docker run -d --name cache-nvm -p 50052:50051 cachelib-grpc-server:pr \
+          docker run -d --name cache-nvm -p 50052:50051 cachelib-grpc-server:ci \
             --cache_size=134217728 --enable_nvm --nvm_path=/data/nvm/cache \
             --nvm_size=268435456
           for _ in $(seq 1 60); do
@@ -213,29 +223,3 @@ jobs:
         run: |
           docker logs cache
           docker logs cache-nvm 2>/dev/null || true
-
-  # Full source build plus unit tests. Slow: compiles gRPC, folly, fbthrift and
-  # CacheLib from source. amd64 only here; the arm64 build runs at release time
-  # on a native arm64 runner.
-  build:
-    name: Build + unit tests (amd64)
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
-          df -h /
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Build image and run unit tests
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: tester
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
