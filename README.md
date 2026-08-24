@@ -61,17 +61,21 @@ Measured on an Apple M2 Max (12 vCPU) under Docker Desktop, 4 GiB DRAM cache,
 200,000 x 1 KiB working set, 100% cache hits, median of 3 runs.
 Full methodology and the reproducible harness: **[BENCHMARKS.md](BENCHMARKS.md)**.
 
+<!-- BEGIN GENERATED: readme-sweep -->
 | Concurrency | Throughput | p50 | p99 | p99.9 |
 |---:|---:|---:|---:|---:|
 | 1 | 5,222 req/s | 0.11 ms | 0.30 ms | 1.47 ms |
 | 25 | 24,062 req/s | 0.48 ms | 2.78 ms | 10.15 ms |
 | **100** | **33,360 req/s** | **1.38 ms** | **6.81 ms** | **11.58 ms** |
-| 400 | 38,320 req/s | 3.67 ms | 29.18 ms | 43.05 ms |
+| 400 | 38,320 req/s | 3.67 ms | 29.18 ms | 43.06 ms |
+<!-- END GENERATED: readme-sweep -->
 
 Throughput flattens at about concurrency 100; past that, extra concurrency buys
-almost nothing and costs a lot of tail latency. `Get` runs at 91% of the
-throughput of `Ping` — an RPC that touches no cache at all — so at this scale
-the CacheLib lookup is effectively free and gRPC framing is the bottleneck.
+almost nothing and costs a lot of tail latency. `Get` runs at
+<!-- BEGIN GENERATED: get-vs-ping -->91%<!-- END GENERATED: get-vs-ping -->
+of the throughput of `Ping` — an RPC that touches no cache at all — so at this
+scale the CacheLib lookup is effectively free and gRPC framing is the
+bottleneck.
 
 These are laptop-VM numbers, published because they are reproducible, not
 because they are a ceiling. Real Linux server hardware will do better.

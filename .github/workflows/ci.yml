@@ -46,6 +46,14 @@ jobs:
       - name: Verify LICENSE and NOTICE present
         run: test -f LICENSE && test -f NOTICE
 
+      # A published performance number that nothing regenerates goes stale
+      # silently. The tables in BENCHMARKS.md and README.md, and the one figure
+      # quoted in prose, are rendered from bench/results-summary.json -- the
+      # committed measurement. This fails the build if the markdown has drifted
+      # from it, in about a second, on every push.
+      - name: Benchmark tables match the committed measurement
+        run: python3 bench/render.py --check
+
       - uses: ludeeus/action-shellcheck@master
         with:
           scandir: ./bench

@@ -2,14 +2,15 @@
   "note": "Distilled from raw ghz runs; percentiles computed from per-request samples. Raw ghz JSON (~731 MB) is not committed - regenerate with bench/run.sh and bench/sweep.sh.",
   "environment": {
     "host": "Apple M2 Max, 12 cores, 32 GiB, macOS 26.5",
-    "runtime": "Docker Desktop, kernel 6.12.76-linuxkit, aarch64, 12 vCPU",
+    "runtime": "Docker Desktop, Linux kernel 6.12.76-linuxkit, aarch64",
+    "vm_resources": "12 vCPU, 31.3 GiB",
     "image": "ghcr.io/celikgo/cachelib-grpc-server:1.6.0",
     "image_digest_arm64": "sha256:9dfc794c4a93520b615a7a7182639ff78d3fbb7679b37a34d14c1a6a642ccf1b",
     "server_cpus": "0-5",
     "client_cpus": "6-11",
-    "load_generator": "ghz v0.120.0 (native arm64)",
-    "cache": "4 GiB DRAM, NVM disabled",
-    "workset": "200000 keys x 1024 B",
+    "load_generator": "ghz v0.120.0, built natively for arm64",
+    "cache": "4 GiB DRAM, NVM/SSD tier disabled",
+    "workset": "200,000 keys x 1 KiB values (~256 MiB, fits entirely in DRAM)",
     "requests_per_measurement": 200000
   },
   "operation_mix": {
