@@ -212,12 +212,17 @@ RUN mkdir -p build && \
     ninja -j$(nproc)
 
 # Stage 2: Test stage (optional, use --target tester)
+#
+# Runs the whole suite via ctest, not a single hand-picked binary. Both test
+# executables are registered with add_test() in CMakeLists.txt; invoking one of
+# them directly -- as this stage used to -- silently skipped every gRPC-level
+# test, so a service regression could not have failed the build.
 FROM builder AS tester
 WORKDIR /build/CacheLib/standalone_server
 RUN cd build && \
     cmake -DBUILD_TESTS=ON . && \
-    ninja -j$(nproc) cache_manager_test && \
-    ./cache_manager_test
+    ninja -j$(nproc) cache_manager_test cache_service_test && \
+    ctest --output-on-failure --timeout 900
 
 # Stage 3: Runtime image
 FROM ubuntu:24.04 AS runtime
