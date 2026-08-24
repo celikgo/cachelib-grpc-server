@@ -18,7 +18,7 @@ CacheLib's own published figures. Re-run it yourself with `./bench/run.sh`.
 | Cache | 4 GiB DRAM, NVM/SSD tier disabled |
 | Working set | 200,000 keys x 1 KiB values (~256 MiB, fits entirely in DRAM) |
 | Requests per measurement | 200,000 |
-| **Measured version** | **1.6.0 — this tree is 1.7.0, so these numbers predate it** |
+| **Measured version** | **1.6.0 — this tree is 1.8.0, so these numbers predate it** |
 <!-- END GENERATED: environment -->
 
 Client and server run as containers on a shared Docker network, so traffic
