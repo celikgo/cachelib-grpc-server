@@ -103,11 +103,13 @@ All 19 RPCs live on `cachelib.grpc.CacheService`
 
 A few worth calling out:
 
-- **`Incr` vs `Increment`.** `Increment` refreshes the TTL on every call, which
-  makes a rate-limit window slide forward forever under sustained load. `Incr`
-  stamps the TTL **only when it creates the key** and leaves it alone
-  afterwards, and reports which happened via `ttl_set`. That is the semantic a
-  fixed-window rate limiter actually needs.
+- **`Incr` vs `Increment`.** `Increment` applies `ttl_seconds` on *every* call
+  when it is non-zero, resetting the expiry of a key that already exists — so a
+  rate-limit window slides forward forever under sustained load. (Pass
+  `ttl_seconds=0` and it preserves the existing expiry instead, which is not a
+  window either.) `Incr` stamps the TTL **only when it creates the key** and
+  leaves it alone afterwards, and reports which happened via `ttl_set`. That is
+  the semantic a fixed-window rate limiter actually needs.
 - **`CompareAndSwap`** carries `keep_ttl`, so optimistic-locking updates do not
   silently reset expiry.
 - **`Pipeline`** amortises per-RPC overhead across a stream — worth reaching for

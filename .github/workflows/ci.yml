@@ -110,18 +110,40 @@ jobs:
           fi
           echo "io_uring disabled in folly as expected"
 
-  # Smoke-test the published image against the real RPC surface. Independent of
-  # the heavy source build, so we always get a meaningful signal quickly.
+  # Smoke-test the RPC surface of the image built FROM THIS CHECKOUT.
+  #
+  # This job used to pull ghcr.io/celikgo/cachelib-grpc-server:latest, which is
+  # whatever was last released -- so the fastest and most reassuring job in the
+  # pipeline proved nothing whatsoever about the pull request it was running
+  # on. It shares the buildx gha cache with the `build` job, so on a warm cache
+  # it costs a couple of minutes rather than the full compile.
   smoke:
-    name: Smoke test published image
+    name: Smoke test the image from this checkout
     runs-on: ubuntu-latest
+    timeout-minutes: 200
     steps:
       - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          df -h /
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the image under test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: cachelib-grpc-server:pr
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Start server
         run: |
           docker run -d --name cache -p 50051:50051 -p 9090:9090 \
-            ghcr.io/celikgo/cachelib-grpc-server:latest
+            cachelib-grpc-server:pr
           for _ in $(seq 1 60); do
             [ "$(docker inspect -f '{{.State.Health.Status}}' cache)" = healthy ] && break
             sleep 2
@@ -158,9 +180,39 @@ jobs:
       - name: Metrics endpoint responds
         run: curl -fsS localhost:9090/metrics | head -5
 
+      # The README's Hybrid DRAM + SSD section tells users to run this. It threw
+      # at startup for every released version -- configureNvmCache called
+      # NavyConfig::enableAsyncIo() without setting the reader/writer thread
+      # counts first -- and no job would have noticed, because nothing ever
+      # started the server with --enable_nvm.
+      - name: Hybrid DRAM + SSD tier starts and serves
+        run: |
+          set -euo pipefail
+          docker run -d --name cache-nvm -p 50052:50051 cachelib-grpc-server:pr \
+            --cache_size=134217728 --enable_nvm --nvm_path=/data/nvm/cache \
+            --nvm_size=268435456
+          for _ in $(seq 1 60); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' cache-nvm)" = healthy ] && break
+            sleep 2
+          done
+          if [ "$(docker inspect -f '{{.State.Health.Status}}' cache-nvm)" != healthy ]; then
+            echo "::error::the server did not come up with --enable_nvm"
+            docker logs cache-nvm
+            exit 1
+          fi
+          V=$(printf hybrid | base64)
+          grpcurl -plaintext -d "{\"key\":\"h1\",\"value\":\"$V\"}" \
+            localhost:50052 cachelib.grpc.CacheService/Set | grep -q '"success": true'
+          grpcurl -plaintext -d '{"key":"h1"}' \
+            localhost:50052 cachelib.grpc.CacheService/Get | grep -q '"found": true'
+          grpcurl -plaintext -d '{}' localhost:50052 cachelib.grpc.CacheService/Stats \
+            | grep -q '"nvmEnabled": true'
+
       - name: Server logs
         if: always()
-        run: docker logs cache
+        run: |
+          docker logs cache
+          docker logs cache-nvm 2>/dev/null || true
 
   # Full source build plus unit tests. Slow: compiles gRPC, folly, fbthrift and
   # CacheLib from source. amd64 only here; the arm64 build runs at release time

@@ -19,6 +19,26 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Sanitizers.
+#
+# Only this repository's translation units are instrumented: gRPC, folly,
+# fbthrift and CacheLib come from getdeps as uninstrumented static libraries
+# and rebuilding that chain under a sanitizer costs hours. That is fine for
+# ASan and UBSan -- ASan's allocator and interceptors are process-wide, and
+# UBSan is pure per-TU instrumentation -- and it is why there is no TSan
+# option here: TSan cannot see happens-before edges inside uninstrumented
+# libraries, so CacheLib's own locking would produce false positives on every
+# lookup. See .github/workflows/nightly.yml.
+#
+#   cmake -DSANITIZE=address,undefined ..
+set(SANITIZE "" CACHE STRING
+    "Comma-separated sanitizers for this project's own sources, e.g. address,undefined")
+if(SANITIZE)
+  message(STATUS "  Sanitizers: ${SANITIZE}")
+  add_compile_options(-fsanitize=${SANITIZE} -fno-omit-frame-pointer -g)
+  add_link_options(-fsanitize=${SANITIZE})
+endif()
+
 # Add our cmake modules directory first (for FindSodium.cmake)
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
