@@ -55,6 +55,20 @@ def sweep_rows(sweep):
     return sorted(((int(k), v) for k, v in sweep.items()), key=lambda kv: kv[0])
 
 
+def source_version():
+    """kServerVersion from CacheManager.h -- the version of the tree, which is
+    not necessarily the version that was measured."""
+    m = re.search(r'kServerVersion\s*=\s*"([^"]+)"',
+                  (ROOT / "CacheManager.h").read_text())
+    return m.group(1) if m else None
+
+
+def measured_version(env):
+    """The version tag of the image the numbers came from, if it has one."""
+    tag = env["image"].rsplit(":", 1)[-1]
+    return None if tag in ("latest", env["image"]) else tag
+
+
 def render_environment(env, requests_per_measurement):
     short = env["image_digest"].split(":", 1)[1][:12]
     gen = env["load_generator"].removeprefix("ghz ")
@@ -71,7 +85,21 @@ def render_environment(env, requests_per_measurement):
         f'| Cache | {env["cache"]} |',
         f'| Working set | {env["workset"]} |',
         f'| Requests per measurement | {requests_per_measurement:,} |',
-    ])
+    ] + _drift_row(env))
+
+
+def _drift_row(env):
+    """Say so, on the page, when the numbers measure a different version.
+
+    A published number goes stale silently. render.py --check only proves the
+    markdown matches the measurement; it cannot know the measurement is old.
+    This makes the gap visible to the reader instead of to nobody.
+    """
+    measured, source = measured_version(env), source_version()
+    if not measured or not source or measured == source:
+        return []
+    return [f'| **Measured version** | **{measured} — this tree is {source}, '
+            f'so these numbers predate it** |']
 
 
 def render_sweep(sweep):
