@@ -250,8 +250,16 @@ if(BUILD_TESTS)
   enable_testing()
   find_package(GTest REQUIRED)
 
+  # One binary per layer, several sources each. New suites are added as source
+  # files rather than as new executables: every extra executable links CacheLib,
+  # folly and fbthrift statically again, which costs far more build time than
+  # the tests themselves. Only CacheManagerTest.cc defines main().
   add_executable(cache_manager_test
     tests/CacheManagerTest.cc
+    tests/AtomicityTest.cc
+    tests/TtlBoundaryTest.cc
+    tests/ScanContractTest.cc
+    tests/NvmHybridTest.cc
   )
   target_link_libraries(cache_manager_test
     cache_manager
@@ -262,6 +270,8 @@ if(BUILD_TESTS)
 
   add_executable(cache_service_test
     tests/CacheServiceTest.cc
+    tests/PipelineTest.cc
+    tests/ServiceContractTest.cc
   )
   target_link_libraries(cache_service_test
     cache_service

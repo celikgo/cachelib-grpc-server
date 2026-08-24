@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
+#include <folly/init/Init.h>
 #include <thread>
 #include <vector>
 
@@ -370,6 +372,20 @@ TEST_F(CacheManagerInitializationTest, OperationsBeforeInit) {
 }  // namespace cachelib
 
 int main(int argc, char** argv) {
+  // gtest first, so it strips its own --gtest_* flags before folly's gflags
+  // parser sees them.
   ::testing::InitGoogleTest(&argc, argv);
+
+  // folly::Init is what server.cc does, and the tests need it for the same
+  // reason: CacheLib's flash tier reaches folly's Timekeeper singleton, and
+  // folly aborts on a singleton requested before registrationComplete():
+  //
+  //   Singleton folly::Timekeeper/folly::detail::TimekeeperSingletonTag
+  //   requested before registrationComplete() call.
+  //
+  // Without this the NVM path cannot be exercised from a test binary at all,
+  // which is part of why the hybrid tier went untested long enough to break.
+  folly::Init init(&argc, &argv);
+
   return RUN_ALL_TESTS();
 }
