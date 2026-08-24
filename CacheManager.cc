@@ -23,6 +23,24 @@
 namespace cachelib {
 namespace grpc_server {
 
+namespace {
+
+// Parse `text` as a base-10 int64 that consumes the ENTIRE string.
+//
+// std::from_chars parses the longest valid prefix and reports success for it,
+// so checking only `ec` accepts "5abc", "7.9" and "42 users" as 5, 7 and 42.
+// The counter path then writes the incremented number back over the whole
+// value, so an Increment aimed at the wrong key silently destroyed whatever
+// was there and reported success. A counter is a counter or it is not one.
+bool parseWholeInt64(const std::string& text, int64_t& out) {
+  const char* begin = text.data();
+  const char* end = begin + text.size();
+  auto result = std::from_chars(begin, end, out);
+  return result.ec == std::errc() && result.ptr == end;
+}
+
+}  // namespace
+
 CacheManager::CacheManager(const CacheConfig& config) : config_(config) {
   XLOG(INFO) << "CacheManager created with config:"
              << " cacheName=" << config_.cacheName
@@ -351,10 +369,11 @@ IncrDecrResult CacheManager::atomicAddValue(std::string_view key,
     size_t size = existingHandle->getSize();
     std::string valueStr(data, size);
 
-    // Parse as integer
-    auto parseResult = std::from_chars(
-        valueStr.data(), valueStr.data() + valueStr.size(), currentValue);
-    if (parseResult.ec != std::errc()) {
+    // Parse as integer. from_chars stops at the first character it cannot
+    // consume and still reports success, so the end pointer has to be checked
+    // as well: without it "42 users" parsed as 42 and the whole value was
+    // replaced by "43", destroying the rest of it and reporting success.
+    if (!parseWholeInt64(valueStr, currentValue)) {
       result.message = "Value is not a valid integer";
       return result;
     }
@@ -443,9 +462,7 @@ IncrResult CacheManager::incr(std::string_view key,
       size_t size = existingHandle->getSize();
       std::string valueStr(data, size);
 
-      auto parseResult = std::from_chars(
-          valueStr.data(), valueStr.data() + valueStr.size(), baseValue);
-      if (parseResult.ec != std::errc()) {
+      if (!parseWholeInt64(valueStr, baseValue)) {
         result.message = "Value is not a valid integer";
         return result;
       }
