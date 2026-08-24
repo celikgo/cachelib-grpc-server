@@ -130,13 +130,6 @@ ARG CACHELIB_REF
 RUN git clone ${CACHELIB_REPO} CacheLib && \
     cd CacheLib && git checkout --detach ${CACHELIB_REF}
 
-# Copy this repository (the gRPC server) into the upstream tree as a subproject.
-COPY CMakeLists.txt build.sh /build/CacheLib/standalone_server/
-COPY proto /build/CacheLib/standalone_server/proto
-COPY cmake /build/CacheLib/standalone_server/cmake
-COPY tests /build/CacheLib/standalone_server/tests
-COPY *.cc *.h /build/CacheLib/standalone_server/
-
 # Apply our patches to the pinned upstream tree. These are real diffs, so if a
 # CACHELIB_REF bump makes one stop applying, the build fails here immediately
 # and loudly rather than much later with a confusing error.
@@ -192,6 +185,20 @@ RUN ln -s /opt/cachelib /opt/cachelib-install
 # Copy magic_enum headers alongside CacheLib headers (needed by EventSink.h)
 RUN cp -r /opt/getdeps-install/magic_enum-*/include/magic_enum /opt/cachelib/include/magic_enum && \
     ls /opt/cachelib/include/magic_enum/magic_enum.hpp
+
+# Copy this repository (the gRPC server) into the upstream tree as a subproject.
+#
+# This COPY sits *after* the dependency and CacheLib builds on purpose. It used
+# to sit before them, which meant editing a single .cc invalidated the layer
+# that builds folly, fbthrift, gRPC and CacheLib from source -- about an hour,
+# on every push that touched code, with the buildx cache unable to help.
+# Nothing above this line depends on the server's sources, so putting it here
+# makes a source-only change cost the last two layers instead of all of them.
+COPY CMakeLists.txt build.sh /build/CacheLib/standalone_server/
+COPY proto /build/CacheLib/standalone_server/proto
+COPY cmake /build/CacheLib/standalone_server/cmake
+COPY tests /build/CacheLib/standalone_server/tests
+COPY *.cc *.h /build/CacheLib/standalone_server/
 
 # Build the gRPC server
 WORKDIR /build/CacheLib/standalone_server
