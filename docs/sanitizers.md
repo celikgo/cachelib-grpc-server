@@ -32,8 +32,15 @@ Or configure a sanitizer build directly:
 cmake -DBUILD_TESTS=ON -DSANITIZE=address,undefined ..
 ```
 
-Measured on an Apple M2 Max: **150 tests, 149 seconds**, on top of a warm
-dependency build. Sanitizers are not what makes this suite slow.
+Measured on an Apple M2 Max by building the `sanitize` stage itself — the same
+thing the nightly builds — **150 tests, 147 seconds**, on top of the dependency
+build. Sanitizers are not what makes this suite slow.
+
+That number is only reachable because the hash table is sized from the cache
+size. It used to be a fixed 2^25 buckets, and CacheLib's iterator is
+header-inlined into our instrumented translation units, so every scan-based
+test walked 33.5 million instrumented bucket reads: one test ran for over an
+hour before that changed.
 
 ## What ASan here can and cannot catch
 
