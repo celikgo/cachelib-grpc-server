@@ -480,6 +480,128 @@ TEST_F(NvmHybridEvictionTest, EvictedKeyIsStillServedAfterLeavingDram) {
   EXPECT_TRUE(fetched == probeValue) << "value changed on the flash round trip";
 }
 
+// The three places where DRAM-only bookkeeping leaks into the wire contract.
+//
+// CacheLib's iterator walks the DRAM access container, and remove() reports
+// kNotFoundInRam when the key was not in DRAM even though it does delete the
+// flash copy. Scan, Flush and Delete all sit on top of that, so with the flash
+// tier on they behave differently from what a reader would assume. These tests
+// pin the actual behaviour, and proto/cache.proto and README.md now say so.
+//
+// Each uses a probe key that is NOT read back first, because a read promotes
+// the item into DRAM and would destroy what is being measured.
+
+TEST_F(NvmHybridEvictionTest, ScanDoesNotSeeFlashResidentKeys) {
+  const std::string probeKey = "nvm-probe-scan";
+  const std::string probeValue = makePatternValue(kFillValueSize, 11);
+  ASSERT_TRUE(cacheManager_->set(probeKey, probeValue));
+
+  ASSERT_EQ(writeFiller(-1), 0u);
+  ASSERT_GT(cacheManager_->getStats().evictionCount, 0);
+
+  // Scan first: reading would promote the key back into DRAM.
+  auto scanned = cacheManager_->scan("nvm-probe-scan", "", 100);
+  const bool visibleToScan = !scanned.keys.empty();
+
+  // Now prove the key is still in the cache, just not in DRAM.
+  std::string fetched;
+  ASSERT_TRUE(pollUntil(
+      [&]() {
+        auto result = cacheManager_->get(probeKey);
+        if (!result.found) {
+          return false;
+        }
+        fetched = result.value;
+        return true;
+      },
+      15000,
+      "the probe key to be served from flash"));
+  EXPECT_TRUE(fetched == probeValue);
+
+  EXPECT_FALSE(visibleToScan)
+      << "Scan returned a key that had been evicted to flash. That would be an "
+         "improvement, but proto/cache.proto and README.md document the "
+         "opposite -- update them rather than deleting this test.";
+}
+
+TEST_F(NvmHybridEvictionTest, FlushLeavesFlashResidentKeysBehind) {
+  const std::string probeKey = "nvm-probe-flush";
+  const std::string probeValue = makePatternValue(kFillValueSize, 13);
+  ASSERT_TRUE(cacheManager_->set(probeKey, probeValue));
+
+  ASSERT_EQ(writeFiller(-1), 0u);
+  ASSERT_GT(cacheManager_->getStats().evictionCount, 0);
+
+  const int64_t removed = cacheManager_->flush();
+  EXPECT_GT(removed, 0) << "flush removed nothing at all";
+
+  // The DRAM-resident filler is gone.
+  EXPECT_FALSE(cacheManager_->get(makeKey(kFillCount - 1)).found);
+
+  // The flash-resident probe survived the flush.
+  std::string fetched;
+  const bool survived = pollUntil(
+      [&]() {
+        auto result = cacheManager_->get(probeKey);
+        if (!result.found) {
+          return false;
+        }
+        fetched = result.value;
+        return true;
+      },
+      15000,
+      "the probe key to be served from flash after a flush");
+
+  EXPECT_TRUE(survived)
+      << "Flush reached a flash-resident key. That would be an improvement, "
+         "but FlushRequest.include_nvm is documented as not implemented and "
+         "the README says flash entries are left in place -- update them "
+         "rather than deleting this test.";
+  if (survived) {
+    EXPECT_TRUE(fetched == probeValue);
+  }
+}
+
+TEST_F(NvmHybridEvictionTest, RemoveReportsDramResidencyNotExistence) {
+  const std::string probeKey = "nvm-probe-remove";
+  const std::string probeValue = makePatternValue(kFillValueSize, 17);
+  ASSERT_TRUE(cacheManager_->set(probeKey, probeValue));
+
+  // A control key that stays in DRAM, so the assertions below cannot be
+  // explained by "nothing was ever stored".
+  const std::string controlKey = "nvm-probe-remove-control";
+  ASSERT_TRUE(cacheManager_->set(controlKey, "control"));
+
+  ASSERT_EQ(writeFiller(-1), 0u);
+  ASSERT_GT(cacheManager_->getStats().evictionCount, 0);
+
+  // Delete WITHOUT reading first. CacheLib removes the flash copy but returns
+  // kNotFoundInRam, which CacheManager::remove reports as false, which
+  // CacheServiceImpl::Delete reports as key_existed=false.
+  const bool reportedExisted = cacheManager_->remove(probeKey);
+
+  // Whatever it reported, the key really is gone: give the asynchronous flash
+  // delete a moment and confirm it never comes back.
+  bool stillReadable = false;
+  for (int i = 0; i < 30 && !stillReadable; ++i) {
+    stillReadable = cacheManager_->get(probeKey).found;
+    if (!stillReadable) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      stillReadable = cacheManager_->get(probeKey).found;
+    }
+  }
+  EXPECT_FALSE(stillReadable) << "the flash copy was not deleted";
+
+  EXPECT_FALSE(reportedExisted)
+      << "remove() reported that a flash-resident key existed. That would be "
+         "an improvement over kNotFoundInRam, but DeleteResponse.key_existed "
+         "is documented as DRAM residency -- update the docs rather than "
+         "deleting this test.";
+
+  // The control key is still in DRAM, and there remove() reports correctly.
+  EXPECT_TRUE(cacheManager_->remove(controlKey));
+}
+
 TEST_F(NvmHybridEvictionTest, BinaryValueSurvivesTheFlashRoundTripExactly) {
   const std::string probeKey = makeKey(0);
   // Seed 0 puts a NUL at offset 0 and covers every high-bit byte. BlockCache
