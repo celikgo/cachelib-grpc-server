@@ -37,7 +37,9 @@ echo "==> Building native ghz client image"
 docker build --quiet -t "$GHZ_IMAGE" -f "$(dirname "$0")/Dockerfile.ghz" "$(dirname "$0")" >/dev/null
 
 echo "==> Recording environment"
-# shellcheck source=bench/env.sh
+# The path is computed, so shellcheck cannot follow it without -x; the
+# source= directive is there for when it is run with -x.
+# shellcheck source=bench/env.sh disable=SC1091
 . "$(dirname "$0")/env.sh"
 write_environment "$OUTDIR" "$IMAGE" "$SERVER_CPUS" "$CLIENT_CPUS" \
   "$CACHE_SIZE" "$WORKSET" "$VALUE_BYTES" "$REQUESTS"
