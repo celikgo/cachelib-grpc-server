@@ -37,17 +37,10 @@ echo "==> Building native ghz client image"
 docker build --quiet -t "$GHZ_IMAGE" -f "$(dirname "$0")/Dockerfile.ghz" "$(dirname "$0")" >/dev/null
 
 echo "==> Recording environment"
-DIGEST=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE" 2>/dev/null || echo "$IMAGE")
-{
-  echo "image:        $IMAGE"
-  echo "digest:       $DIGEST"
-  echo "docker:       $(docker info --format '{{.OperatingSystem}} kernel={{.KernelVersion}} arch={{.Architecture}} ncpu={{.NCPU}} mem={{.MemTotal}}')"
-  echo "server_cpus:  $SERVER_CPUS"
-  echo "client_cpus:  $CLIENT_CPUS"
-  echo "workset:      $WORKSET keys x $VALUE_BYTES B"
-  echo "load:         n=$REQUESTS c=$CONCURRENCY connections=$CONNECTIONS"
-  echo "cache:        ${CACHE_SIZE} B DRAM, NVM disabled"
-} | tee "$OUTDIR/environment.txt"
+# shellcheck source=bench/env.sh
+. "$(dirname "$0")/env.sh"
+write_environment "$OUTDIR" "$IMAGE" "$SERVER_CPUS" "$CLIENT_CPUS" \
+  "$CACHE_SIZE" "$WORKSET" "$VALUE_BYTES" "$REQUESTS"
 
 cleanup
 docker network create "$NET" >/dev/null
@@ -70,15 +63,12 @@ run() { # name, call, data, n
     --insecure --call "$call" -d "$data" \
     -n "$n" -c "$CONCURRENCY" --connections "$CONNECTIONS" \
     -O json "$SRV":50051 > "$OUTDIR/$name.json"
-  python3 - "$OUTDIR/$name.json" "$name" <<'PY'
-import json,sys
-d=json.load(open(sys.argv[1]))
-lat={x["percentage"]:x["latency"]/1e6 for x in d.get("latencyDistribution",[])}
-codes=d.get("statusCodeDistribution",{})
-print(f'  {sys.argv[2]:<10} {d["rps"]:>10,.0f} rps   '
-      f'p50 {lat.get(50,0):.2f} ms  p99 {lat.get(99,0):.2f} ms  '
-      f'p999 {lat.get(99.9,lat.get(99,0)):.2f} ms   {codes}')
-PY
+  # report.py computes percentiles from the raw per-request samples. This
+  # used to be a second, inline implementation reading ghz's
+  # latencyDistribution, which falls back to p99 when p99.9 is absent -- so
+  # the two disagreed and nothing recorded which produced the published
+  # numbers.
+  python3 "$(dirname "$0")/report.py" "$OUTDIR/$name.json"
 }
 
 # Preload the working set, then read it back. RequestNumber spans the same

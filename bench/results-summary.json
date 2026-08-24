@@ -1,17 +1,17 @@
 {
-  "note": "Distilled from raw ghz runs; percentiles computed from per-request samples. Raw ghz JSON (~731 MB) is not committed - regenerate with bench/run.sh and bench/sweep.sh.",
+  "note": "Distilled by hand from raw ghz runs predating bench/summarize.py; regenerate with bench/all.sh, which derives this file from the runs.",
   "environment": {
     "host": "Apple M2 Max, 12 cores, 32 GiB, macOS 26.5",
     "runtime": "Docker Desktop, Linux kernel 6.12.76-linuxkit, aarch64",
     "vm_resources": "12 vCPU, 31.3 GiB",
     "image": "ghcr.io/celikgo/cachelib-grpc-server:1.6.0",
-    "image_digest_arm64": "sha256:9dfc794c4a93520b615a7a7182639ff78d3fbb7679b37a34d14c1a6a642ccf1b",
     "server_cpus": "0-5",
     "client_cpus": "6-11",
     "load_generator": "ghz v0.120.0, built natively for arm64",
     "cache": "4 GiB DRAM, NVM/SSD tier disabled",
     "workset": "200,000 keys x 1 KiB values (~256 MiB, fits entirely in DRAM)",
-    "requests_per_measurement": 200000
+    "requests_per_measurement": 200000,
+    "image_digest": "sha256:9dfc794c4a93520b615a7a7182639ff78d3fbb7679b37a34d14c1a6a642ccf1b"
   },
   "operation_mix": {
     "get": {
@@ -73,6 +73,7 @@
   },
   "get_concurrency_sweep": {
     "1": {
+      "repetitions": 3,
       "rps_median": 5222.2,
       "rps_runs": [
         4790.2,
@@ -85,6 +86,7 @@
       "errors": 0
     },
     "8": {
+      "repetitions": 3,
       "rps_median": 12515.6,
       "rps_runs": [
         14770.9,
@@ -97,6 +99,7 @@
       "errors": 0
     },
     "25": {
+      "repetitions": 3,
       "rps_median": 24062.2,
       "rps_runs": [
         24062.2,
@@ -109,6 +112,7 @@
       "errors": 0
     },
     "50": {
+      "repetitions": 3,
       "rps_median": 29369.9,
       "rps_runs": [
         18368.8,
@@ -121,6 +125,7 @@
       "errors": 0
     },
     "100": {
+      "repetitions": 3,
       "rps_median": 33359.6,
       "rps_runs": [
         33359.6,
@@ -133,6 +138,7 @@
       "errors": 0
     },
     "200": {
+      "repetitions": 3,
       "rps_median": 36908.3,
       "rps_runs": [
         34835.9,
@@ -145,6 +151,7 @@
       "errors": 0
     },
     "400": {
+      "repetitions": 3,
       "rps_median": 38320.3,
       "rps_runs": [
         29712.9,

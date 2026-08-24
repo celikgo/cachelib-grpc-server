@@ -56,7 +56,7 @@ def sweep_rows(sweep):
 
 
 def render_environment(env, requests_per_measurement):
-    short = env["image_digest_arm64"].split(":", 1)[1][:12]
+    short = env["image_digest"].split(":", 1)[1][:12]
     gen = env["load_generator"].removeprefix("ghz ")
     return "\n".join([
         "| | |",
@@ -64,7 +64,7 @@ def render_environment(env, requests_per_measurement):
         f'| Host | {env["host"]} |',
         f'| Container runtime | {env["runtime"]} |',
         f'| VM resources | {env["vm_resources"]} |',
-        f'| Server image | `{env["image"]}` (arm64, `sha256:{short}`) |',
+        f'| Server image | `{env["image"]}` (`sha256:{short}`) |',
         f'| Server CPUs | pinned to cores {env["server_cpus"]} |',
         f'| Load generator | [ghz](https://ghz.sh) {gen}, pinned to cores'
         f' {env["client_cpus"]} |',
