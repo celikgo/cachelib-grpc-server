@@ -113,7 +113,11 @@ A few worth calling out:
 - **`Pipeline`** amortises per-RPC overhead across a stream — worth reaching for
   given that transport, not the cache, is what limits throughput.
 - **`Scan`** is O(n) over the cache and is a debugging and administration tool,
-  not something to put on a request path.
+  not something to put on a request path. Its cursor is **best effort**, not a
+  snapshot: the cursor is the previous page's last key, and resuming re-walks
+  the cache and skips until it sees that key — so if the cursor key is deleted
+  between pages, the resumed page comes back empty and the iteration ends
+  early. Within one page no key repeats; across pages nothing is guaranteed.
 
 ---
 
@@ -127,7 +131,7 @@ Flags are passed to the container as arguments.
 | `--port` | `50051` | gRPC port |
 | `--cache_name` | `grpc-cachelib` | Cache instance name |
 | `--cache_size` | `1073741824` (1 GiB) | DRAM cache size, bytes |
-| `--max_item_size` | `4194304` (4 MiB) | Largest storable value |
+| `--max_item_size` | `4194304` (4 MiB) | Upper bound the server pre-checks — see the note below |
 | `--lru_refresh_time` | `60` | LRU refresh interval, seconds |
 | `--metrics_port` | `9090` | Prometheus port (`0` disables) |
 | `--log_level` | `INFO` | `DBG`, `INFO`, `WARN`, `ERR`, `CRITICAL` |
@@ -138,6 +142,15 @@ Flags are passed to the container as arguments.
 | `--nvm_reader_threads` | `32` | Flash reader threads |
 | `--nvm_writer_threads` | `32` | Flash writer threads |
 | `--enable_io_uring` | `true` | io_uring for flash I/O |
+
+> **The largest value you can actually store** is
+> `min(--max_item_size, 4 MiB − 32 − len(key))`. CacheLib cannot allocate an
+> item larger than one 4 MiB slab, and the 32-byte item header and the key
+> share that budget with the value — so with the 4 MiB default and a one-byte
+> key the ceiling is 4,194,271 bytes, and raising `--max_item_size` above
+> 4 MiB changes nothing. Below the slab ceiling the flag is exact: with
+> `--max_item_size=65536`, a 65,536-byte value stores and a 65,537-byte one
+> does not. An oversized value comes back as `success=false`.
 
 ### Hybrid DRAM + SSD
 
@@ -154,6 +167,19 @@ docker run -d -p 50051:50051 \
 
 Reads and writes are unchanged; `Stats` reports the flash tier separately via
 `nvm_enabled`, `nvm_size`, `nvm_hit_count`, and `nvm_miss_count`.
+
+Two things behave differently once the tier is on, because CacheLib's iterator
+and its remove result only see DRAM:
+
+- **`Scan` and `Flush` do not see flash-only keys.** They walk the DRAM hash
+  table, which does not contain items that have been evicted to flash. A
+  `Flush` therefore leaves those entries in place and `items_removed` counts
+  only what was in DRAM. `FlushRequest.include_nvm` is not implemented.
+- **`Delete` reports DRAM residency, not existence.** A key that had been
+  evicted to flash *is* deleted, but `key_existed` comes back `false`, and
+  `MultiDelete`'s `deleted_count` / `not_found_count` are skewed the same way.
+  Do not drive idempotency or lock-ownership decisions off that flag on a
+  hybrid deployment.
 
 > **Note on `--enable_io_uring`.** The published images are built against a
 > folly configured without `io_uring` (see [`patches/`](patches/)), because the
