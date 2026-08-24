@@ -15,6 +15,7 @@
 #include "CacheManager.h"
 
 #include <charconv>
+#include <limits>
 #include <cstring>
 
 #include <cachelib/allocator/nvmcache/NavyConfig.h>
@@ -37,6 +38,33 @@ bool parseWholeInt64(const std::string& text, int64_t& out) {
   const char* end = begin + text.size();
   auto result = std::from_chars(begin, end, out);
   return result.ec == std::errc() && result.ptr == end;
+}
+
+// Add `delta` to `base`, refusing to overflow.
+//
+// Signed overflow is undefined behaviour, and it was reachable: Incr on a
+// counter holding INT64_MAX returned -9223372036854775808, and Decrement on
+// INT64_MIN returned 9223372036854775807. For the fixed-window rate limiter
+// Incr exists to serve, a counter that wraps negative means every subsequent
+// limit check passes.
+bool checkedAdd(int64_t base, int64_t delta, int64_t& out) {
+  if (delta > 0 && base > std::numeric_limits<int64_t>::max() - delta) {
+    return false;
+  }
+  if (delta < 0 && base < std::numeric_limits<int64_t>::min() - delta) {
+    return false;
+  }
+  out = base + delta;
+  return true;
+}
+
+// Negate `delta` for Decrement, refusing on INT64_MIN whose negation overflows.
+bool checkedNegate(int64_t delta, int64_t& out) {
+  if (delta == std::numeric_limits<int64_t>::min()) {
+    return false;
+  }
+  out = -delta;
+  return true;
 }
 
 }  // namespace
@@ -411,7 +439,11 @@ IncrDecrResult CacheManager::atomicAddValue(std::string_view key,
   }
 
   // Calculate new value
-  int64_t newValue = currentValue + delta;
+  int64_t newValue = 0;
+  if (!checkedAdd(currentValue, delta, newValue)) {
+    result.message = "Counter would overflow";
+    return result;
+  }
   std::string newValueStr = std::to_string(newValue);
 
   // Store the new value
@@ -440,7 +472,13 @@ IncrDecrResult CacheManager::decrement(std::string_view key,
   if (delta == 0) {
     delta = 1;
   }
-  return atomicAddValue(key, -delta, ttlSeconds);
+  int64_t negated = 0;
+  if (!checkedNegate(delta, negated)) {
+    IncrDecrResult result;
+    result.message = "Delta cannot be negated without overflow";
+    return result;
+  }
+  return atomicAddValue(key, negated, ttlSeconds);
 }
 
 IncrResult CacheManager::incr(std::string_view key,
@@ -490,7 +528,11 @@ IncrResult CacheManager::incr(std::string_view key,
     }
   }
 
-  int64_t newValue = baseValue + delta;
+  int64_t newValue = 0;
+  if (!checkedAdd(baseValue, delta, newValue)) {
+    result.message = "Counter would overflow";
+    return result;
+  }
   std::string newValueStr = std::to_string(newValue);
 
   if (set(key, newValueStr, writeTtl)) {
