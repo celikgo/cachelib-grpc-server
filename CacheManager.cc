@@ -16,7 +16,6 @@
 
 #include <charconv>
 #include <cstring>
-#include <regex>
 
 #include <cachelib/allocator/nvmcache/NavyConfig.h>
 #include <folly/logging/xlog.h>
@@ -604,54 +603,65 @@ TouchResult CacheManager::touch(std::string_view key, uint32_t ttlSeconds) {
 // Key Scanning
 // =============================================================================
 
+// Glob matching for Scan.
+//
+// This used to build a regular expression from the caller's pattern -- once
+// per key, inside the loop over the whole cache -- with '*' translated to
+// '.*'. Two problems. The cheap one: a fresh expression was compiled for every
+// key examined. The expensive one: nested '.*' groups make the standard
+// library's matcher backtrack exponentially, so a 25-byte pattern was enough
+// to pin a core indefinitely. Measured against a single 40-character key on
+// the published 1.6.0 image:
+//
+//   "*a*a*a*a*a*a*a*ab"                    6.2 s
+//   "*a*a*a*a*a*a*a*a*a*a*a*ab"            still running after 40 s
+//
+// Scan takes an unauthenticated pattern from any client (see SECURITY.md: no
+// auth, no TLS), and CacheServiceImpl::Scan never checks for cancellation, so
+// the work carried on after the client had given up and disconnected -- six
+// cores stayed pinned by two abandoned requests.
+//
+// The replacement is the standard iterative wildcard matcher: one pass with a
+// single backtrack point for the most recent '*'. No recursion, no allocation,
+// no compilation, and a worst case of O(len(key) * len(pattern)) instead of an
+// exponential one. Only '*' and '?' are special, which is what
+// proto/cache.proto documents and what the old escaping produced in practice:
+// every other character, metacharacters included, matches literally.
 bool CacheManager::matchesPattern(const std::string& key,
                                    const std::string& pattern) const {
   if (pattern.empty() || pattern == "*") {
     return true;
   }
 
-  // Simple wildcard matching
-  // Convert glob pattern to regex
-  std::string regexPattern;
-  for (char c : pattern) {
-    switch (c) {
-      case '*':
-        regexPattern += ".*";
-        break;
-      case '?':
-        regexPattern += ".";
-        break;
-      case '.':
-      case '[':
-      case ']':
-      case '(':
-      case ')':
-      case '{':
-      case '}':
-      case '+':
-      case '^':
-      case '$':
-      case '|':
-      case '\\':
-        regexPattern += '\\';
-        regexPattern += c;
-        break;
-      default:
-        regexPattern += c;
+  constexpr size_t kNone = std::string::npos;
+
+  size_t k = 0;            // position in key
+  size_t p = 0;            // position in pattern
+  size_t starPos = kNone;  // pattern index of the most recent '*'
+  size_t starKey = 0;      // key index that '*' is currently assumed to consume
+
+  while (k < key.size()) {
+    if (p < pattern.size() && (pattern[p] == '?' || pattern[p] == key[k])) {
+      ++k;
+      ++p;
+    } else if (p < pattern.size() && pattern[p] == '*') {
+      starPos = p++;
+      starKey = k;
+    } else if (starPos != kNone) {
+      // Mismatch after a '*': let that '*' swallow one more character.
+      p = starPos + 1;
+      k = ++starKey;
+    } else {
+      return false;
     }
   }
 
-  try {
-    std::regex re(regexPattern);
-    return std::regex_match(key, re);
-  } catch (const std::regex_error&) {
-    // If regex fails, fall back to simple prefix matching
-    if (pattern.back() == '*') {
-      std::string prefix = pattern.substr(0, pattern.size() - 1);
-      return key.substr(0, prefix.size()) == prefix;
-    }
-    return key == pattern;
+  // Trailing '*'s may still match the empty remainder.
+  while (p < pattern.size() && pattern[p] == '*') {
+    ++p;
   }
+
+  return p == pattern.size();
 }
 
 ScanResult CacheManager::scan(const std::string& pattern,
