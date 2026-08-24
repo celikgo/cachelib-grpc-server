@@ -292,6 +292,12 @@ if(BUILD_TESTS)
     tests/CacheServiceTest.cc
     tests/PipelineTest.cc
     tests/ServiceContractTest.cc
+    # The fuzz body and a gtest that replays the corpus through it. Costs about
+    # a second and needs no clang, no libFuzzer and no extra workflow; it is
+    # the regression half of fuzzing. The discovery half (building the same
+    # body as a libFuzzer target with -DCACHELIB_GRPC_LIBFUZZER) is separate.
+    tests/fuzz/FuzzCacheService.cc
+    tests/fuzz/FuzzCorpusReplayTest.cc
   )
   target_link_libraries(cache_service_test
     cache_service
