@@ -1,0 +1,90 @@
+name: Nightly
+
+# One job. It builds the whole test suite with AddressSanitizer and
+# UndefinedBehaviorSanitizer and runs it.
+#
+# There is deliberately no ThreadSanitizer job and no continuous-fuzzing job.
+# docs/sanitizers.md explains why in detail; the short version is that TSan
+# cannot see inside the uninstrumented CacheLib and folly archives, so it would
+# report races it cannot rule out rather than races that exist, and the
+# suppression that silences that noise would silence the signal with it. The
+# fuzz corpus is replayed by the ordinary CI build instead, in about 150 ms.
+#
+# This runs nightly rather than per-push because it does not share the `build`
+# job's build cache: -fsanitize changes the compiler flags, so the sanitizer
+# stage compiles this repository's sources a second time. It does reuse every
+# layer below that -- gRPC, folly, fbthrift and CacheLib -- so a warm run is
+# minutes, not hours.
+
+on:
+  schedule:
+    # 03:17 UTC. Not on the hour: GitHub delays scheduled runs at popular times.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sanitize:
+    name: ASan + UBSan
+    runs-on: ubuntu-latest
+    # Cold, this compiles gRPC, folly, fbthrift and CacheLib from source before
+    # it gets to the sanitizer build. Warm, it is a few minutes.
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          df -h /
+
+      - uses: docker/setup-buildx-action@v3
+
+      # cache-from only: the nightly reads the cache the `build` job populates
+      # on main and never writes to it, so a sanitizer layer can never evict a
+      # layer the ordinary build depends on.
+      - name: Build and run the sanitized suite
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: sanitize
+          push: false
+          load: false
+          cache-from: type=gha
+
+      # The build step above fails if ctest fails, because the test run is a
+      # RUN instruction. This step exists so a green run says what it proved.
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo '### ASan + UBSan: clean'
+            echo
+            echo 'The full suite compiled with `-fsanitize=address,undefined`'
+            echo 'and passed. Only this repository'"'"'s translation units are'
+            echo 'instrumented; see [docs/sanitizers.md](../blob/${{ github.sha }}/docs/sanitizers.md)'
+            echo 'for what that does and does not cover.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: What to do if this failed
+        if: failure()
+        run: |
+          {
+            echo '### Nightly sanitizer run failed'
+            echo
+            echo 'Reproduce locally:'
+            echo
+            echo '```bash'
+            echo 'docker build --target sanitize .'
+            echo '```'
+            echo
+            echo 'ASan reports a lifetime bug in this repository'"'"'s own code.'
+            echo 'UBSan reports undefined behaviour in it. Neither can see'
+            echo 'inside a CacheLib slab, so a report here is about our code.'
+          } >> "$GITHUB_STEP_SUMMARY"

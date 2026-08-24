@@ -242,6 +242,36 @@ bench/                reproducible benchmark harness
 
 ---
 
+## What is verified
+
+150 tests across two binaries, run by `ctest` in the Dockerfile's `tester`
+stage on every push. They exist because a cache is a component where a rare
+concurrency bug or an off-by-one at a TTL boundary costs a user their data, and
+because a guarantee this README makes and nothing tests is not a guarantee.
+
+| Area | What is pinned |
+|---|---|
+| Atomics under contention | N threads released simultaneously onto one key: exactly one `SetNX` winner; `Incr` results forming exactly `1..N` with no duplicates and exactly one `ttl_set`; mixed `Increment`/`Decrement` netting to exactly zero; one `CompareAndSwap` winner per generation and a stale token that never mutates |
+| TTL boundaries | expiry at, before and after the second boundary; TTL across an overwrite; `Incr`'s window not sliding and restarting once it lapses; the `-1`/`-2` sentinels; counters that overflow or are not entirely numeric |
+| Scan | pagination completeness, cursor invalidation, mutation mid-scan, `count` clamping, metacharacters matched literally, and a time bound that fails if a backtracking matcher returns |
+| Streaming | `sequence_id` correlation batched and interleaved, a malformed message and an empty key mid-stream, 20 client cancellations in a row, shutdown with a stream open under a hard bound, backpressure |
+| Protocol edges | the 255/256-byte key boundary, the value-size boundary, binary and empty values, batch duplicates and partial failure, unicode and embedded-NUL keys |
+| Hybrid DRAM+SSD | initialisation, both Navy engines, DRAM eviction and promotion, byte-exact binary round trips through flash, TTL surviving the trip |
+
+A nightly run ([`nightly.yml`](.github/workflows/nightly.yml)) builds the same
+suite with AddressSanitizer and UndefinedBehaviorSanitizer. Only this
+repository's own translation units are instrumented, which bounds what that can
+catch; [`docs/sanitizers.md`](docs/sanitizers.md) says what it covers, and why
+there is no ThreadSanitizer job rather than a noisy one.
+
+A fuzz corpus is replayed through the request-decode path on every CI build, in
+about 150 ms — the regression half of fuzzing, without a second toolchain.
+
+Two things are **not** covered, and are not claimed anywhere: authentication
+and TLS (there are none — see [`SECURITY.md`](SECURITY.md)), and corruption
+inside a CacheLib slab, which ASan cannot see because the slab arena is
+`mmap`ed rather than `malloc`ed.
+
 ## Compatibility
 
 The wire format is the `.proto`. Any gRPC language binding works; generate

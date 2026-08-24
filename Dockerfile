@@ -231,6 +231,42 @@ RUN cd build && \
     ninja -j$(nproc) cache_manager_test cache_service_test && \
     ctest --output-on-failure --timeout 900
 
+# Stage 2b: sanitizer build, use --target sanitize
+#
+# ASan and UBSan over THIS repository's translation units only. gRPC, folly,
+# fbthrift and CacheLib come from getdeps as uninstrumented static libraries,
+# which is fine for these two: ASan's allocator and interceptors are
+# process-wide, and UBSan is pure per-TU instrumentation.
+#
+# There is deliberately no TSan stage. TSan cannot see happens-before edges
+# inside uninstrumented libraries, so CacheLib's own locking and refcounts
+# would manufacture a race report on essentially every lookup, and a
+# suppressions file does not rescue it -- TSan suppresses on any matching
+# frame, and nearly every stack here passes through facebook::cachelib::, so
+# the suppression that silences the noise silences the signal too. Making it
+# meaningful means rebuilding the whole dependency chain under -fsanitize=
+# thread, which changes CMAKE_CXX_FLAGS in the first expensive layer and so
+# cannot reuse any build cache. See docs/sanitizers.md.
+FROM builder AS sanitize
+WORKDIR /build/CacheLib/standalone_server
+RUN mkdir -p build-san && \
+    cd build-san && \
+    INSTALL_PREFIX=$(readlink -f /opt/getdeps-install) && \
+    CMAKE_PATHS="/opt/cachelib" && \
+    for dir in ${INSTALL_PREFIX}/*/; do CMAKE_PATHS="${CMAKE_PATHS};${dir}"; done && \
+    CMAKE_PATHS="${CMAKE_PATHS};/usr/local" && \
+    cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          -DCMAKE_PREFIX_PATH="${CMAKE_PATHS}" \
+          -DCMAKE_EXE_LINKER_FLAGS="-Wl,--copy-dt-needed-entries" \
+          -DBUILD_TESTS=ON \
+          -DSANITIZE=address,undefined \
+          -G Ninja \
+          .. && \
+    ninja -j$(nproc) cache_manager_test cache_service_test && \
+    ASAN_OPTIONS=detect_leaks=0:abort_on_error=1 \
+    UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
+    ctest --output-on-failure --timeout 1800
+
 # Stage 3: Runtime image
 FROM ubuntu:24.04 AS runtime
 

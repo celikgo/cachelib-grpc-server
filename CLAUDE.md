@@ -64,6 +64,14 @@ Iterating on tests without paying for a full image build: build `--target builde
 mount the working tree into it and rebuild only the server and tests (a couple of minutes
 instead of an hour).
 
+Sanitizers: `docker build --target sanitize .`, or `cmake -DSANITIZE=address,undefined`.
+The full suite takes ~150 s under ASan+UBSan. A nightly runs it. There is no TSan job on
+purpose — see `docs/sanitizers.md`, and do not add one without reading it first.
+
+`tests/fuzz/` holds one fuzz body with two front ends: a corpus replay that runs inside
+`cache_service_test` on every build, and an `LLVMFuzzerTestOneInput` behind
+`-DCACHELIB_GRPC_LIBFUZZER`. New crashers go in the embedded corpus.
+
 ## Standing rules
 
 - **A guarantee not covered by a test must not be claimed in `README.md`** or in the
@@ -80,6 +88,9 @@ instead of an hour).
   the Meta Apache-2.0 header in its first 20 lines; CI's `proto` job enforces it.
 - C++20, `clang-format` with the repo `.clang-format` (Google, 2-space indent, 80 columns).
 - Bumping `ARG CACHELIB_REF` is its own commit, never bundled with anything else.
+- `Scan` and `Flush` iterate CacheLib's hash table, so their cost tracks the *configured
+  cache size*, not the number of keys — and neither sees keys that live only on flash.
+  Anything built on them inherits both.
 
 ## Commits
 
