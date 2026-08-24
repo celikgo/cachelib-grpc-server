@@ -159,7 +159,17 @@ message GetResponse {
 message SetRequest {
   // Cache key (max 250 bytes recommended)
   string key = 1;
-  // Value to store (max size depends on server config, typically 4MB)
+  // Value to store.
+  //
+  // The ceiling is min(--max_item_size, 4 MiB - 32 - len(key)). CacheLib
+  // cannot allocate an item larger than one 4 MiB slab, and the item header
+  // (32 bytes) and the key share that budget with the value, so the default
+  // --max_item_size of 4 MiB is not reachable: with a 1-byte key the largest
+  // value that stores is 4,194,271 bytes. Raising --max_item_size above 4 MiB
+  // has no effect. Below the slab ceiling the flag is exact -- with
+  // --max_item_size=65536, 65536 bytes stores and 65537 does not.
+  //
+  // An oversized value returns success=false with "Failed to set value".
   bytes value = 2;
   // Time-to-live in seconds (0 = no expiration, until evicted)
   int64 ttl_seconds = 3;
@@ -185,7 +195,13 @@ message DeleteRequest {
 message DeleteResponse {
   // Always true unless there was an internal error
   bool success = 1;
-  // True if the key existed before deletion
+  // True if the key was resident in DRAM before deletion.
+  //
+  // With --enable_nvm this is NOT the same as "the key existed": CacheLib
+  // removes a flash-resident key correctly but reports kNotFoundInRam, so a
+  // key that had been evicted to flash is deleted and still reported here as
+  // false. Do not use this flag for idempotency or lock-ownership decisions on
+  // a hybrid deployment. MultiDeleteResponse's counts have the same caveat.
   bool key_existed = 2;
   // Human-readable status message
   string message = 3;
@@ -240,12 +256,19 @@ message MultiSetRequest {
 }
 
 // MultiSetResponse indicates results of the batch set operation.
+//
+// CAVEAT: items with an empty key are dropped before they are attempted, and
+// are counted neither as successes nor as failures. Three items, one of them
+// empty-keyed, yields success=true, succeeded_count=2, failed_count=0 and no
+// failed_keys entry -- nothing tells the client its item was never stored.
+// Unary Set rejects an empty key with INVALID_ARGUMENT; this path does not.
 message MultiSetResponse {
-  // True if all items were stored successfully
+  // True if all *attempted* items were stored. Does not account for items
+  // dropped for having an empty key -- see the caveat above.
   bool success = 1;
   // Number of items stored successfully
   int32 succeeded_count = 2;
-  // Number of items that failed
+  // Number of items that failed. Excludes items dropped for an empty key.
   int32 failed_count = 3;
   // Human-readable status message
   string message = 4;
@@ -307,9 +330,15 @@ message SetNXResponse {
 message IncrementRequest {
   // Key to increment
   string key = 1;
-  // Amount to add (default: 1)
+  // Amount to add (default: 1). The result must fit in an int64: an increment
+  // that would overflow is refused and the stored value is left untouched.
   int64 delta = 2;
-  // TTL for new keys (0 = no expiration)
+  // TTL in seconds, applied on EVERY call, not only on creation.
+  //
+  // > 0 : the key's expiry is reset to this value each time, so a window under
+  //       sustained load never closes. Use Incr for a fixed window.
+  //   0 : an existing key keeps its remaining TTL; a newly created key gets no
+  //       expiry.
   int64 ttl_seconds = 3;
 }
 
@@ -448,7 +477,18 @@ message ScanRequest {
   // Pattern to match (supports * as wildcard)
   // Examples: "user:*", "*:profile", "session:*:data"
   string pattern = 1;
-  // Cursor from previous ScanResponse (empty for first request)
+  // Cursor from previous ScanResponse (empty for first request).
+  //
+  // The cursor is the last key of the previous page, and resumption re-walks
+  // the cache from the start and skips until that exact key is seen. It is
+  // therefore BEST EFFORT, not a snapshot:
+  //   * if the cursor key is deleted between pages, the skip never completes
+  //     and the resumed page comes back empty, silently ending the iteration
+  //     early. The remaining keys are still in the cache; start over to see
+  //     them.
+  //   * keys inserted or removed mid-scan may or may not be visited.
+  // Within a single page no key is returned twice. Across pages, nothing is
+  // guaranteed. Scan is an administration tool, not a request-path API.
   string cursor = 2;
   // Maximum number of keys to return per call (default: 100, max: 10000)
   int32 count = 3;
@@ -484,7 +524,8 @@ message ScanResponse {
 
 // StatsRequest requests cache statistics.
 message StatsRequest {
-  // If true, include detailed per-pool stats
+  // NOT IMPLEMENTED. The server ignores this field; the response is identical
+  // whether it is set or not, and pool_stats is always empty.
   bool detailed = 1;
 }
 
@@ -515,13 +556,17 @@ message StatsResponse {
   // --- Operation Stats ---
   // Cache hit rate (0.0 - 1.0)
   double hit_rate = 4;
-  // Total number of GET operations
+  // Number of CacheManager lookups performed by Get, MultiGet and the
+  // Pipeline Get path. Exists, GetTTL and Scan do NOT count, so this is not
+  // "read RPCs served". hit_rate is hit_count / get_count over the same set.
   int64 get_count = 5;
   // Number of cache hits
   int64 hit_count = 6;
   // Number of cache misses
   int64 miss_count = 7;
-  // Total number of SET operations
+  // Number of CacheManager writes, which is not the number of Set RPCs:
+  // SetNX, Increment, Decrement, Incr, CompareAndSwap and Touch all write
+  // through the same path and are counted here too.
   int64 set_count = 8;
   // Total number of DELETE operations
   int64 delete_count = 9;
@@ -549,7 +594,7 @@ message StatsResponse {
   string version = 18;
 
   // --- Detailed Stats ---
-  // Per-pool statistics (only if detailed=true in request)
+  // NOT IMPLEMENTED. Always empty; the server never populates it.
   repeated PoolStats pool_stats = 19;
 }
 
@@ -566,7 +611,12 @@ message PingResponse {
 
 // FlushRequest removes all keys from the cache.
 message FlushRequest {
-  // If true, also clear NVM cache (if enabled)
+  // NOT IMPLEMENTED. The server ignores this field.
+  //
+  // Flush walks CacheLib's DRAM hash table, which does not contain items that
+  // live only on flash, so with --enable_nvm a Flush leaves flash-resident
+  // entries in place and items_removed counts only what was in DRAM. The same
+  // limitation applies to Scan.
   bool include_nvm = 1;
 }
 
