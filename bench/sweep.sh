@@ -10,11 +10,18 @@ SRV=cachelib-sweep-server
 GHZ_IMAGE=cachelib-bench-ghz:local
 WORKSET="${WORKSET:-200000}"
 REQUESTS="${REQUESTS:-200000}"
-LEVELS="${LEVELS:-1 8 25 50 100 200 400 800}"
+# Must match what bench/summarize.py will find; a level measured here and
+# not summarised costs a full 200k-request pass for nothing. c=800 used to
+# be measured and then silently dropped by aggregate.py's hardcoded list.
+LEVELS="${LEVELS:-1 8 25 50 100 200 400}"
 mkdir -p "$OUTDIR"
 cleanup() { docker rm -f "$SRV" >/dev/null 2>&1 || true; docker network rm "$NET" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 docker build --quiet -t "$GHZ_IMAGE" -f "$(dirname "$0")/Dockerfile.ghz" "$(dirname "$0")" >/dev/null
+# shellcheck source=bench/env.sh
+. "$(dirname "$0")/env.sh"
+write_environment "$OUTDIR" "$IMAGE" "${SERVER_CPUS:-0-5}" "${CLIENT_CPUS:-6-11}" \
+  4294967296 "$WORKSET" 1024 "$REQUESTS"
 cleanup; docker network create "$NET" >/dev/null
 docker run -d --name "$SRV" --network "$NET" --cpuset-cpus "${SERVER_CPUS:-0-5}" \
   "$IMAGE" --address=0.0.0.0 --port=50051 --cache_size=4294967296 >/dev/null

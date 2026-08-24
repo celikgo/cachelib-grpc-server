@@ -12,7 +12,7 @@ CacheLib's own published figures. Re-run it yourself with `./bench/run.sh`.
 | Host | Apple M2 Max, 12 cores, 32 GiB, macOS 26.5 |
 | Container runtime | Docker Desktop, Linux kernel 6.12.76-linuxkit, aarch64 |
 | VM resources | 12 vCPU, 31.3 GiB |
-| Server image | `ghcr.io/celikgo/cachelib-grpc-server:1.6.0` (arm64, `sha256:9dfc794c4a93`) |
+| Server image | `ghcr.io/celikgo/cachelib-grpc-server:1.6.0` (`sha256:9dfc794c4a93`) |
 | Server CPUs | pinned to cores 0-5 |
 | Load generator | [ghz](https://ghz.sh) v0.120.0, built natively for arm64, pinned to cores 6-11 |
 | Cache | 4 GiB DRAM, NVM/SSD tier disabled |
@@ -82,26 +82,33 @@ these numbers; optimising the transport would.
 
 ## Reproducing
 
-```bash
-./bench/run.sh                      # operation mix, writes bench/results/
-./bench/sweep.sh                    # concurrency sweep
-python3 bench/report.py bench/results/get.json
-python3 bench/aggregate.py bench/results/rep1 bench/results/rep2 bench/results/rep3
-```
-
-Both scripts take an image reference as their first argument, so you can point
-them at a locally built image instead of the published one.
-
-Every table above is **generated**, not transcribed. The measurement lives in
-[`bench/results-summary.json`](bench/results-summary.json); the tables and the
-one percentage quoted in prose are rendered from it:
+One committed command regenerates every number on this page:
 
 ```bash
-python3 bench/render.py             # rewrite the tables from the measurement
-python3 bench/render.py --check     # fail if they have drifted (runs in CI)
+./bench/all.sh [image]              # a couple of hours; run it on an idle machine
 ```
 
-So after re-measuring, update `bench/results-summary.json` and re-run
-`bench/render.py` — do not edit the numbers in the markdown by hand. CI runs
-`--check` on every push, which is what stops a published number from quietly
-becoming false.
+It runs the operation mix once, the concurrency sweep three times — the
+"median of 3" this page claims — writes `bench/results-summary.json` from the
+raw ghz output, and re-renders the tables here and in the README.
+
+Nothing on the path from measurement to page is transcribed by hand:
+
+| | |
+|---|---|
+| `bench/run.sh`, `bench/sweep.sh` | drive the load, write raw ghz JSON and an `environment.json` describing the host, the image **digest** and the workload |
+| `bench/report.py` | the single percentile implementation, computed from the raw per-request samples so p99.9 is a measurement and not a p99 fallback |
+| `bench/summarize.py` | raw runs → `bench/results-summary.json` |
+| `bench/render.py` | `bench/results-summary.json` → the tables on this page and in the README |
+| `bench/aggregate.py` | prints the same medians for a human; not part of the chain |
+
+Both `run.sh` and `sweep.sh` take an image reference as their first argument,
+so you can point them at a locally built image.
+
+CI runs `python3 bench/render.py --check` on every push, which fails the build
+if the markdown and the measurement file disagree. Do not edit a number in this
+file by hand — re-measure with `bench/all.sh`, or the check will tell on you.
+
+> The committed `bench/results-summary.json` predates `bench/summarize.py` and
+> was distilled by hand from the same runs; its `note` field says so. The first
+> `bench/all.sh` run replaces it with a generated one.
