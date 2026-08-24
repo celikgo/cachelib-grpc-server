@@ -103,7 +103,24 @@ void CacheManager::configureNvmCache(CacheAllocatorConfig& cacheConfig) {
   navyConfig.setBlockSize(config_.nvmBlockSize);
   navyConfig.setDeviceMaxWriteSize(1024 * 1024);  // 1MB max write
 
-  // Configure async I/O
+  // Navy's thread counts have to be set before anything that derives a queue
+  // depth from them. enableAsyncIo()'s first two parameters are maxNumReads
+  // and maxNumWrites -- not thread counts -- and it throws outright when the
+  // reader/writer thread counts are still zero:
+  //
+  //   number of read/write threads should be set first as non-zero value
+  //
+  // Passing the thread counts positionally into enableAsyncIo(), with no
+  // preceding setReaderAndWriterThreads() call, meant every --enable_nvm start
+  // threw here, initialize() caught it and returned false, and the server
+  // exited before serving a single request. The flash tier could not be
+  // switched on at all.
+  navyConfig.setReaderAndWriterThreads(
+      config_.nvmReaderThreads,
+      config_.nvmWriterThreads);
+
+  // One outstanding request per thread. maxNumReads and maxNumWrites must
+  // divide evenly by the thread counts; Navy derives qDepth from the ratio.
   navyConfig.enableAsyncIo(
       config_.nvmReaderThreads,
       config_.nvmWriterThreads,
