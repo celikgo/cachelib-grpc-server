@@ -6,6 +6,7 @@ CacheLib's own published figures. Re-run it yourself with `./bench/run.sh`.
 
 ## Environment
 
+<!-- BEGIN GENERATED: environment -->
 | | |
 |---|---|
 | Host | Apple M2 Max, 12 cores, 32 GiB, macOS 26.5 |
@@ -16,6 +17,8 @@ CacheLib's own published figures. Re-run it yourself with `./bench/run.sh`.
 | Load generator | [ghz](https://ghz.sh) v0.120.0, built natively for arm64, pinned to cores 6-11 |
 | Cache | 4 GiB DRAM, NVM/SSD tier disabled |
 | Working set | 200,000 keys x 1 KiB values (~256 MiB, fits entirely in DRAM) |
+| Requests per measurement | 200,000 |
+<!-- END GENERATED: environment -->
 
 Client and server run as containers on a shared Docker network, so traffic
 never leaves the VM's kernel, and they are pinned to disjoint CPU sets so the
@@ -34,6 +37,7 @@ RPC). Median of 3 repetitions, 200,000 requests per level, after a discarded
 warmup pass. Latency percentiles are computed from raw per-request samples,
 so p99.9 is a real measurement rather than a p99 fallback.
 
+<!-- BEGIN GENERATED: sweep -->
 | Concurrency | Throughput (req/s) | Range across runs | p50 | p99 | p99.9 |
 |---:|---:|---:|---:|---:|---:|
 | 1 | 5,222 | 4,790 – 5,739 | 0.11 ms | 0.30 ms | 1.47 ms |
@@ -42,7 +46,8 @@ so p99.9 is a real measurement rather than a p99 fallback.
 | 50 | 29,370 | 18,369 – 33,966 | 0.84 ms | 3.81 ms | 8.05 ms |
 | 100 | 33,360 | 33,158 – 34,759 | 1.38 ms | 6.81 ms | 11.58 ms |
 | 200 | 36,908 | 34,836 – 37,221 | 2.12 ms | 14.17 ms | 22.41 ms |
-| 400 | 38,320 | 29,713 – 39,161 | 3.67 ms | 29.18 ms | 43.05 ms |
+| 400 | 38,320 | 29,713 – 39,161 | 3.67 ms | 29.18 ms | 43.06 ms |
+<!-- END GENERATED: sweep -->
 
 **Reading the curve.** Throughput climbs to roughly 33k req/s at
 concurrency 100 and then flattens; past that point additional concurrency buys
@@ -60,15 +65,17 @@ wide at c=50. That is the measurement environment, not the server.
 
 200,000 requests each at concurrency 50, 8 connections, 1 KiB values.
 
+<!-- BEGIN GENERATED: operations -->
 | Operation | Throughput (req/s) | p50 | p99 | p99.9 | Errors |
 |---|---:|---:|---:|---:|---:|
 | `Get` (100% hit) | 31,780 | 0.81 ms | 3.28 ms | 6.11 ms | 0 |
 | `Set` | 26,205 | 0.83 ms | 4.04 ms | 8.09 ms | 0 |
 | `Incr` (rate-limit bucket) | 30,745 | 0.81 ms | 3.38 ms | 8.00 ms | 0 |
 | `Ping` (transport floor) | 34,907 | 0.72 ms | 3.02 ms | 8.15 ms | 0 |
+<!-- END GENERATED: operations -->
 
 `Ping` does no cache work at all, so it measures the gRPC transport floor.
-`Get` reaches 91% of that floor — meaning the CacheLib
+`Get` reaches <!-- BEGIN GENERATED: get-vs-ping -->91%<!-- END GENERATED: get-vs-ping --> of that floor — meaning the CacheLib
 lookup itself is nearly free at this scale and the cost is dominated by gRPC
 framing and syscalls, not by the cache. Optimising the cache would not move
 these numbers; optimising the transport would.
@@ -84,3 +91,17 @@ python3 bench/aggregate.py bench/results/rep1 bench/results/rep2 bench/results/r
 
 Both scripts take an image reference as their first argument, so you can point
 them at a locally built image instead of the published one.
+
+Every table above is **generated**, not transcribed. The measurement lives in
+[`bench/results-summary.json`](bench/results-summary.json); the tables and the
+one percentage quoted in prose are rendered from it:
+
+```bash
+python3 bench/render.py             # rewrite the tables from the measurement
+python3 bench/render.py --check     # fail if they have drifted (runs in CI)
+```
+
+So after re-measuring, update `bench/results-summary.json` and re-run
+`bench/render.py` — do not edit the numbers in the markdown by hand. CI runs
+`--check` on every push, which is what stops a published number from quietly
+becoming false.
