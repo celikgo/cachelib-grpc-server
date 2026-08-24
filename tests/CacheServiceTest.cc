@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
+#include <folly/init/Init.h>
 #include <grpcpp/grpcpp.h>
 #include <memory>
 #include <thread>
@@ -365,7 +367,14 @@ TEST_F(CacheServiceTest, Stats) {
   EXPECT_GE(response.set_count(), 10);
   EXPECT_GE(response.get_count(), 5);
   EXPECT_GE(response.hit_count(), 5);
-  EXPECT_GT(response.uptime_seconds(), 0);
+  // Uptime is whole seconds since the cache was constructed, and this fixture
+  // is milliseconds old, so the only correct expectation is a plausible
+  // non-negative number. The original assertion was > 0, which could only pass
+  // if the test happened to take a second; it never ran, because the Dockerfile
+  // built cache_manager_test only, so nobody found out.
+  EXPECT_GE(response.uptime_seconds(), 0);
+  EXPECT_LT(response.uptime_seconds(), 300)
+      << "uptime looks uninitialised rather than measured";
 }
 
 TEST_F(CacheServiceTest, SetReturnsSizeBytes) {
@@ -549,6 +558,20 @@ TEST_F(CacheServiceTest, ConcurrentRequests) {
 }  // namespace cachelib
 
 int main(int argc, char** argv) {
+  // gtest first, so it strips its own --gtest_* flags before folly's gflags
+  // parser sees them.
   ::testing::InitGoogleTest(&argc, argv);
+
+  // folly::Init is what server.cc does, and the tests need it for the same
+  // reason: CacheLib's flash tier reaches folly's Timekeeper singleton, and
+  // folly aborts on a singleton requested before registrationComplete():
+  //
+  //   Singleton folly::Timekeeper/folly::detail::TimekeeperSingletonTag
+  //   requested before registrationComplete() call.
+  //
+  // Without this the NVM path cannot be exercised from a test binary at all,
+  // which is part of why the hybrid tier went untested long enough to break.
+  folly::Init init(&argc, &argv);
+
   return RUN_ALL_TESTS();
 }
