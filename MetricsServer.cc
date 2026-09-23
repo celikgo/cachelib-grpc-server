@@ -211,9 +211,19 @@ std::string MetricsServer::generateMetrics() {
         << "# TYPE cachelib_nvm_size_bytes gauge\n"
         << "cachelib_nvm_size_bytes " << stats.nvmSize << "\n\n";
 
-    out << "# HELP cachelib_nvm_used_bytes NVM cache used in bytes.\n"
+    out << "# HELP cachelib_nvm_used_bytes Legacy name: cumulative Navy device bytes written since startup, not occupied capacity.\n"
         << "# TYPE cachelib_nvm_used_bytes gauge\n"
         << "cachelib_nvm_used_bytes " << stats.nvmUsed << "\n\n";
+
+    out << "# HELP cachelib_nvm_device_bytes_read_total Bytes read by Navy's device abstraction; file reads may hit the OS page cache.\n"
+        << "# TYPE cachelib_nvm_device_bytes_read_total counter\n"
+        << "cachelib_nvm_device_bytes_read_total " << stats.nvmDeviceBytesRead
+        << "\n\n";
+
+    out << "# HELP cachelib_nvm_device_bytes_written_total Bytes written by Navy's device abstraction, not physical NAND writes.\n"
+        << "# TYPE cachelib_nvm_device_bytes_written_total counter\n"
+        << "cachelib_nvm_device_bytes_written_total "
+        << stats.nvmDeviceBytesWritten << "\n\n";
 
     out << "# HELP cachelib_nvm_hits_total NVM cache hit count.\n"
         << "# TYPE cachelib_nvm_hits_total counter\n"

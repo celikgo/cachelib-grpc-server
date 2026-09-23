@@ -1,0 +1,11 @@
+{
+  "utc": "2026-09-23T11:37:52.028846+00:00",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "network": "clhttp-d2a7bc9046",
+  "grpc_image": "ghcr.io/celikgo/cachelib-grpc-server:latest",
+  "client_image": "sha256:8e4983e40855a6fc0fef6b527f88af3bf2d8aa8f6de4fbe8b7019d54930bb0d3",
+  "nginx_image": "sha256:7f7dcd27f920b22e980508bd5009b452e3d30b68c1041aa82e98e471d367db03",
+  "cachelib_image": "[\"ghcr.io/celikgo/cachelib-grpc-server@sha256:fea1a76b84a8c6e61bfdd30db100cf9f6bb330c6f93407e237909b9ad10a571a\"]",
+  "origin_assumption_ms": 5,
+  "host_ports_published": false
+}

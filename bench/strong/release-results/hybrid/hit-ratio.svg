@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="242" viewBox="0 0 1100 242">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-family="sans-serif" font-size="18">Object hit ratio</text>
+<text x="400" y="52" font-family="sans-serif" font-size="12">fraction; median of independent runs</text>
+<text x="18" y="82" font-family="monospace" font-size="12">origin_uniform_64k_5ms / grpc</text>
+<rect x="400" y="68" width="355" height="18" fill="#1d6fa5"/>
+<text x="763" y="82" font-family="sans-serif" font-size="12">0.6</text>
+<text x="18" y="109" font-family="monospace" font-size="12">origin_uniform_64k_5ms / grpc_nvm</text>
+<rect x="400" y="95" width="550" height="18" fill="#158b8b"/>
+<text x="958" y="109" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="136" font-family="monospace" font-size="12">origin_uniform_64k_5ms / memcached</text>
+<rect x="400" y="122" width="379" height="18" fill="#d48524"/>
+<text x="787" y="136" font-family="sans-serif" font-size="12">0.7</text>
+<text x="18" y="163" font-family="monospace" font-size="12">origin_uniform_64k_5ms / memcached_extstore</text>
+<rect x="400" y="149" width="550" height="18" fill="#b59a1d"/>
+<text x="958" y="163" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="190" font-family="monospace" font-size="12">origin_uniform_64k_5ms / redis</text>
+<rect x="400" y="176" width="322" height="18" fill="#b94a48"/>
+<text x="730" y="190" font-family="sans-serif" font-size="12">0.6</text>
+<text x="18" y="217" font-family="monospace" font-size="12">origin_uniform_64k_5ms / valkey</text>
+<rect x="400" y="203" width="322" height="18" fill="#8b5a9f"/>
+<text x="730" y="217" font-family="sans-serif" font-size="12">0.6</text>
+</svg>

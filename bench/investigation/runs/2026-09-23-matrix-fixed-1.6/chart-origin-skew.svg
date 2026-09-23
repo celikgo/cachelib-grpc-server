@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="131" viewBox="0 0 760 131">
+<rect width="100%" height="100%" fill="white"/>
+<text x="20" y="30" font-family="sans-serif" font-size="18">64 KiB skewed origin workload: object hit ratio</text>
+<text x="20" y="73" font-family="sans-serif" font-size="13">memcached_extstore</text>
+<rect x="165" y="55" width="474" height="25" fill="#326baf"/>
+<text x="649" y="73" font-family="sans-serif" font-size="13">0.731 fraction</text>
+</svg>

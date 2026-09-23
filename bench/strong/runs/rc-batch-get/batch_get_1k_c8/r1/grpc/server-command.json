@@ -1,0 +1,22 @@
+[
+  "docker",
+  "run",
+  "-d",
+  "--name",
+  "cstrong-grpc-7fd7e4b6",
+  "--network",
+  "cstrong-602bb396f9",
+  "--cpus",
+  "4",
+  "--cpuset-cpus",
+  "0-3",
+  "--memory",
+  "768m",
+  "--memory-swap",
+  "768m",
+  "cachelib-candidate:1.8.0",
+  "--cache_size=100663296",
+  "--metrics_port=0",
+  "--nvm_reader_threads=4",
+  "--nvm_writer_threads=4"
+]

@@ -1,0 +1,36 @@
+{
+  "utc": "2026-09-23T13:10:20.612085+00:00",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "docker": {
+    "Architecture": "aarch64",
+    "CgroupVersion": "2",
+    "KernelVersion": "6.12.76-linuxkit",
+    "OperatingSystem": "Docker Desktop",
+    "ServerVersion": "29.4.3"
+  },
+  "images": {
+    "ghcr.io/celikgo/cachelib-grpc-server:latest": "sha256:32e55bd7e64aced3c5aff460fd150f90ac2c67fcb8e5a1539dff2db0a317cf70",
+    "nginx:1.29-alpine": "sha256:7f7dcd27f920b22e980508bd5009b452e3d30b68c1041aa82e98e471d367db03",
+    "cachebench-go:rc": "sha256:44c46461eb8e6587798becc479f0e14e11f51ab5cd3dbdea70ef45061990dbee",
+    "cachelib-investigation-client:local": "sha256:fe82b658c99a15ae4a9ae5995db9007f62f7a6a04f2f908c52d62446685aab49"
+  },
+  "configuration": {
+    "grpc_image": "ghcr.io/celikgo/cachelib-grpc-server:latest",
+    "output": "bench/strong/runs/pilot-http-old1.6",
+    "cases": "repeated_256k_c8,onepass_256k_c8",
+    "reps": 1,
+    "seconds": 3,
+    "warmup": 1
+  },
+  "cache_path_budget": {
+    "cpus": 2,
+    "memory_mib": 768
+  },
+  "grpc_path_split": {
+    "grpc": "1 CPU/384 MiB",
+    "Python HTTP adapter": "1 CPU/384 MiB"
+  },
+  "origin": "simulated 5 ms, separate 2 CPU/512 MiB container",
+  "nginx_disk_cache": "512 MiB max, bind-mounted Docker Desktop filesystem; page cache not disabled",
+  "client": "separate 2 CPU/768 MiB cgroup, compiled Go, full body verification"
+}

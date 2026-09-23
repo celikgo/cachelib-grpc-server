@@ -1,0 +1,6 @@
+{
+  "basic": "passed",
+  "batch_pipeline": "passed",
+  "ttl_observed_expiry_s": 1.6610578339998483,
+  "ttl_requested_s": 1
+}

@@ -1,0 +1,12 @@
+FROM python:3.12-slim
+RUN pip install --no-cache-dir grpcio==1.68.1 grpcio-tools==1.68.1 redis==5.2.1 pymemcache==4.0.0
+WORKDIR /work
+COPY proto/cache.proto /work/cache.proto
+RUN python -m grpc_tools.protoc -I/work --python_out=/work --grpc_python_out=/work /work/cache.proto
+COPY bench/investigation/client.py /work/client.py
+COPY bench/investigation/http_service.py /work/http_service.py
+ARG HTTP_SERVICE_SOURCE=bench/strong/http_service.py
+COPY ${HTTP_SERVICE_SOURCE} /work/http_service_strong.py
+COPY bench/investigation/http_client.py /work/http_client.py
+COPY bench/strong/flash_smoke.py /work/flash_smoke.py
+ENTRYPOINT ["python", "/work/client.py"]

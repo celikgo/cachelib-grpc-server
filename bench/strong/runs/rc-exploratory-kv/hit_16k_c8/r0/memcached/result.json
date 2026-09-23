@@ -1,0 +1,101 @@
+{
+  "args": {
+    "address": "cstrong-memcached-fcbca24e:11211",
+    "backend": "memcached",
+    "batch_size": 16,
+    "concurrency": 8,
+    "measure_seconds": 10,
+    "model": "closed",
+    "objects": 1000,
+    "offered_rate": 1000,
+    "operation": "unary",
+    "origin_ms": 0,
+    "pattern": "uniform",
+    "preload": true,
+    "run_id": "hit_16k_c8-r0",
+    "value_bytes": 16384,
+    "warmup_seconds": 15,
+    "workload": "read-only"
+  },
+  "batches": 887051,
+  "client_cgroup_after": {
+    "burst_usec": 0,
+    "memory.current": 58298368,
+    "memory.peak": 58298368,
+    "nice_usec": 0,
+    "nr_bursts": 0,
+    "nr_periods": 251,
+    "nr_throttled": 0,
+    "system_usec": 36087100,
+    "throttled_usec": 0,
+    "usage_usec": 57311301,
+    "user_usec": 21224200
+  },
+  "client_cgroup_before": {
+    "burst_usec": 0,
+    "memory.current": 11284480,
+    "memory.peak": 16568320,
+    "nice_usec": 0,
+    "nr_bursts": 0,
+    "nr_periods": 151,
+    "nr_throttled": 0,
+    "system_usec": 21158923,
+    "throttled_usec": 0,
+    "usage_usec": 33821857,
+    "user_usec": 12662933
+  },
+  "definitions": {
+    "latency": "closed-loop request start to response, or offered scheduled arrival to response including queue",
+    "operation": "one key-value operation; batches count separately",
+    "origin": "simulated fixed delay plus cache fill on miss",
+    "payload": "verified cache-hit response bytes"
+  },
+  "dropped_arrivals": 0,
+  "elapsed_s": 10.000072255,
+  "errors": 0,
+  "get_attempts": 887051,
+  "hits": 887051,
+  "latency_ms": {
+    "p50": 0.077666,
+    "p95": 0.157459,
+    "p99": 0.39864549999999965,
+    "p999": 1.4533582999999999
+  },
+  "latency_samples": 887051,
+  "operations": 887051,
+  "origin_bytes": 0,
+  "origin_bytes_avoided": 14533443584,
+  "origins": 0,
+  "payload_mib_s": 1386.0071729051722,
+  "pipeline_stream_creation_ms": [],
+  "scheduler_lag_mean_ms": 0,
+  "schema": 1,
+  "successful_ops_s": 88704.45906593102,
+  "warmup_stable": true,
+  "warmup_windows_ops": [
+    416061,
+    415971,
+    419420
+  ],
+  "server_stats_before": {
+    "bytes": 16466890,
+    "curr_items": 1000,
+    "evictions": 0,
+    "get_hits": 1274172,
+    "get_misses": 4,
+    "version": "1.6.45"
+  },
+  "server_stats_after": {
+    "bytes": 16466890,
+    "curr_items": 1000,
+    "evictions": 0,
+    "get_hits": 2138510,
+    "get_misses": 4,
+    "version": "1.6.45"
+  },
+  "server_cgroup_sample_times_utc": [
+    "2026-09-23T16:22:38.671616+00:00",
+    "2026-09-23T16:22:49.164285+00:00"
+  ],
+  "client_exit_code": 0
+}

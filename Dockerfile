@@ -84,8 +84,26 @@ WORKDIR /build
 
 # Install gRPC and protobuf from source for consistent versions
 ARG GRPC_VERSION=v1.60.0
-RUN git clone --recurse-submodules -b ${GRPC_VERSION} --depth 1 https://github.com/grpc/grpc && \
+# The tag is checked against its immutable commit. gRPC's shallow recursive
+# clone can fail to fetch its historical BoringSSL submodule SHA from GitHub's
+# Git endpoint; fetch that exact tree from codeload and verify its archive hash.
+ARG GRPC_REF=0ef13a7555dbaadd4633399242524129eef5e231
+ARG BORINGSSL_REF=2ff4b968a7e0cfee66d9f151cb95635b43dc1d5b
+ARG BORINGSSL_ARCHIVE_SHA256=b21994a857a7aa6d5256ffe355c735ad4c286de44c6c81dfc04edc41a8feaeef
+RUN git clone -b ${GRPC_VERSION} --depth 1 https://github.com/grpc/grpc && \
     cd grpc && \
+    test "$(git rev-parse HEAD)" = "${GRPC_REF}" && \
+    git submodule update --init --depth 1 \
+      third_party/abseil-cpp third_party/cares/cares third_party/protobuf \
+      third_party/re2 third_party/zlib && \
+    mkdir -p third_party/boringssl-with-bazel && \
+    curl --fail --location --retry 3 --retry-delay 2 \
+      "https://codeload.github.com/google/boringssl/tar.gz/${BORINGSSL_REF}" \
+      --output /tmp/boringssl.tar.gz && \
+    echo "${BORINGSSL_ARCHIVE_SHA256}  /tmp/boringssl.tar.gz" | sha256sum --check && \
+    tar -xzf /tmp/boringssl.tar.gz --strip-components=1 \
+      -C third_party/boringssl-with-bazel && \
+    rm /tmp/boringssl.tar.gz && \
     mkdir -p cmake/build && \
     cd cmake/build && \
     cmake -DgRPC_INSTALL=ON \
@@ -272,10 +290,14 @@ FROM ubuntu:24.04 AS runtime
 
 # OCI labels. org.opencontainers.image.source is what links the published
 # package to this repository on GHCR.
+ARG SERVER_VERSION=1.8.0
+ARG SOURCE_REVISION=uncommitted
 LABEL org.opencontainers.image.source="https://github.com/celikgo/cachelib-grpc-server" \
       org.opencontainers.image.description="A standalone gRPC server for Meta's CacheLib: 19 RPCs over a Redis-style key/value surface, on a hybrid DRAM+SSD cache." \
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.title="cachelib-grpc-server" \
+      org.opencontainers.image.version="${SERVER_VERSION}" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}" \
       org.opencontainers.image.documentation="https://github.com/celikgo/cachelib-grpc-server/blob/main/README.md"
 
 # The exact upstream CacheLib revision this image was compiled against, stamped

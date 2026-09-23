@@ -1,0 +1,67 @@
+{
+  "args": {
+    "backend": "redis",
+    "batch_kind": "multiget",
+    "batch_size": 16,
+    "command": "run",
+    "concurrency": 1,
+    "host": "clinv-redis-da66fe31",
+    "mode": "hit",
+    "objects": 2,
+    "origin_ms": 0.0,
+    "pattern": "uniform",
+    "port": 6379,
+    "requests": 20,
+    "run_id": "near_limit-0",
+    "seed": 20260923,
+    "value_bytes": 4193000,
+    "warmup": 200
+  },
+  "backend": "redis",
+  "byte_hits": 83860000,
+  "definitions": {
+    "operation": "one object GET plus optional origin delay and cache SET on miss; mixed includes SET; bypass models only origin delay",
+    "origin_bytes_avoided": "hits times fixed object size, relative to fetching every request",
+    "payload_bytes": "bytes in successful cache GET responses"
+  },
+  "elapsed_s": 0.06047579200094333,
+  "error_examples": [],
+  "errors": 0,
+  "latency_ms": {
+    "p50": 2.868875,
+    "p95": 3.17828125,
+    "p99": 3.18825625
+  },
+  "measured_operations": 20,
+  "object_hits": 20,
+  "origin_bytes": 0,
+  "origin_bytes_avoided": 83860000,
+  "origin_requests": 0,
+  "payload_mib_s": 1322.4320927054687,
+  "preloaded_objects": 2,
+  "read_operations": 20,
+  "schema": 1,
+  "stats_after": {
+    "evicted_keys": 0,
+    "keyspace_hits": 42,
+    "keyspace_misses": 3,
+    "redis_version": "8.2.10",
+    "total_commands_processed": 67,
+    "used_memory": 13762152,
+    "used_memory_rss": 41033728,
+    "valkey_version": null
+  },
+  "stats_before": {
+    "evicted_keys": 0,
+    "keyspace_hits": 22,
+    "keyspace_misses": 3,
+    "redis_version": "8.2.10",
+    "total_commands_processed": 46,
+    "used_memory": 13762152,
+    "used_memory_rss": 28450816,
+    "valkey_version": null
+  },
+  "successful_ops_s": 330.71084045808,
+  "warmup_operations": 20,
+  "write_operations": 0
+}

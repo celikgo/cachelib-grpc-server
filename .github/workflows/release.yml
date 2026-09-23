@@ -167,6 +167,15 @@ jobs:
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Version declarations must agree
+        run: |
+          set -euo pipefail
+          V='${{ steps.version.outputs.version }}'
+          grep -Fqx "constexpr const char* kServerVersion = \"$V\";" <(grep 'kServerVersion =' CacheManager.h)
+          grep -Eq "^project\(cachelib-grpc-server VERSION $V LANGUAGES CXX\)$" CMakeLists.txt
+          grep -Fqx "# $V release-candidate qualification" <(head -1 bench/strong/REPORT.md)
+          test "${GITHUB_REF_NAME#v}" = "$V" || [ "${{ github.event_name }}" = workflow_dispatch ]
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -175,36 +184,79 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Push a per-architecture tag as well as by-digest. The flat -amd64 /
-      # -arm64 tags are a published interface: existing compose files pin them.
-      - name: Build and push ${{ matrix.arch }}
-        id: push
+      - name: Build and run the full test suite on ${{ matrix.arch }}
         uses: docker/build-push-action@v6
         with:
           context: .
+          target: tester
           platforms: linux/${{ matrix.arch }}
-          push: true
-          tags: ${{ env.IMAGE }}:${{ steps.version.outputs.version }}-${{ matrix.arch }}
+          push: false
           build-args: |
             CACHELIB_REF=${{ needs.pin.outputs.ref }}
             CACHELIB_REPO=${{ needs.pin.outputs.repo }}
           cache-from: type=gha,scope=${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
 
-      - name: Record digest
+      # Load one native image, smoke that exact local binary, and only then
+      # push it. The flat architecture tags remain a published interface.
+      - name: Build the runtime candidate on ${{ matrix.arch }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          push: false
+          tags: cachelib-release-candidate:local
+          build-args: |
+            CACHELIB_REF=${{ needs.pin.outputs.ref }}
+            CACHELIB_REPO=${{ needs.pin.outputs.repo }}
+            SERVER_VERSION=${{ steps.version.outputs.version }}
+            SOURCE_REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+      - name: Build correctness client
+        run: docker build -f bench/investigation/Dockerfile.client -t cachelib-investigation-client:local .
+
+      - name: Native runtime and DRAM + SSD smoke
         run: |
+          scripts/release-smoke.sh cachelib-release-candidate:local \
+            '${{ steps.version.outputs.version }}' \
+            "/tmp/flash-smoke-${{ matrix.arch }}.json"
+
+      - name: Push verified ${{ matrix.arch }} image and record digest
+        run: |
+          set -euo pipefail
+          docker tag cachelib-release-candidate:local \
+            "$IMAGE:${{ steps.version.outputs.version }}-${{ matrix.arch }}"
+          docker push "$IMAGE:${{ steps.version.outputs.version }}-${{ matrix.arch }}"
           mkdir -p /tmp/digests
-          echo "${{ steps.push.outputs.digest }}" > /tmp/digests/${{ matrix.arch }}
+          docker buildx imagetools inspect \
+            "$IMAGE:${{ steps.version.outputs.version }}-${{ matrix.arch }}" \
+            --format '{{.Manifest.Digest}}' > /tmp/digests/${{ matrix.arch }}
+          test -s /tmp/digests/${{ matrix.arch }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: digest-${{ matrix.arch }}
           path: /tmp/digests/${{ matrix.arch }}
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.arch }}
+          path: |
+            /tmp/flash-smoke-${{ matrix.arch }}.json
+            /tmp/flash-smoke-${{ matrix.arch }}-limits.json
+
   manifest:
-    name: Merge manifest and release
+    name: Merge versioned manifest
     needs: [pin, build]
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.manifest.outputs.version }}
+      list: ${{ steps.manifest.outputs.list }}
+      amd64: ${{ steps.manifest.outputs.amd64 }}
+      arm64: ${{ steps.manifest.outputs.arm64 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -228,7 +280,7 @@ jobs:
           AMD=$(cat /tmp/digests/amd64)
           ARM=$(cat /tmp/digests/arm64)
           docker buildx imagetools create \
-            -t "$IMAGE:$VERSION" -t "$IMAGE:latest" \
+            -t "$IMAGE:$VERSION" \
             "$IMAGE@$AMD" "$IMAGE@$ARM"
           LIST=$(docker buildx imagetools inspect "$IMAGE:$VERSION" \
                    --format '{{.Manifest.Digest}}')
@@ -256,6 +308,8 @@ jobs:
         run: |
           set -euo pipefail
           EXPECTED='${{ needs.pin.outputs.ref }}'
+          VERSION='${{ steps.manifest.outputs.version }}'
+          SOURCE='${{ github.sha }}'
           rc=0
           for arch in amd64 arm64; do
             digest=$(cat "/tmp/digests/$arch")
@@ -265,11 +319,15 @@ jobs:
             got=$(docker buildx imagetools inspect "$IMAGE@$digest" --format '{{json .Image}}' \
                     | jq -r 'if has("config") then . else (to_entries[0].value) end
                              | .config.Labels["io.celikgo.cachelib.upstream.revision"] // ""')
-            if [ "$got" != "$EXPECTED" ]; then
-              echo "::error::$arch image was built from '${got:-<unlabelled>}', but the pin is '$EXPECTED'"
+            labels=$(docker buildx imagetools inspect "$IMAGE@$digest" --format '{{json .Image}}' \
+                    | jq -c 'if has("config") then . else (to_entries[0].value) end | .config.Labels')
+            version=$(printf '%s' "$labels" | jq -r '."org.opencontainers.image.version" // ""')
+            source=$(printf '%s' "$labels" | jq -r '."org.opencontainers.image.revision" // ""')
+            if [ "$got" != "$EXPECTED" ] || [ "$version" != "$VERSION" ] || [ "$source" != "$SOURCE" ]; then
+              echo "::error::$arch labels disagree: upstream=$got version=$version source=$source"
               rc=1
             else
-              echo "$arch: built from $got"
+              echo "$arch: upstream=$got version=$version source=$source"
             fi
           done
           exit $rc
@@ -279,6 +337,10 @@ jobs:
         run: |
           set -euo pipefail
           V="${{ steps.manifest.outputs.version }}"
+          GRPC=$(grep -oE '^ARG GRPC_REF=[0-9a-f]{40}$' Dockerfile | cut -d= -f2)
+          BORINGSSL=$(grep -oE '^ARG BORINGSSL_REF=[0-9a-f]{40}$' Dockerfile | cut -d= -f2)
+          BORINGSSL_SHA=$(grep -oE '^ARG BORINGSSL_ARCHIVE_SHA256=[0-9a-f]{64}$' Dockerfile | cut -d= -f2)
+          test -n "$GRPC" && test -n "$BORINGSSL" && test -n "$BORINGSSL_SHA"
           mkdir -p dist
 
           # The service definition, so a client author can generate stubs from
@@ -307,13 +369,24 @@ jobs:
               "commits_behind_upstream_main": "${{ needs.pin.outputs.behind }}",
               "vendored": false
             },
+            "grpc": {
+              "revision": "$GRPC",
+              "boringssl_revision": "$BORINGSSL",
+              "boringssl_archive_sha256": "$BORINGSSL_SHA"
+            },
             "license": "Apache-2.0"
           }
           JSON
           jq . dist/provenance.json > /dev/null   # fail loudly on malformed JSON
 
-          # The measured benchmark data behind BENCHMARKS.md.
-          cp bench/results-summary.json dist/benchmark-results.json
+          # Keep current and historical benchmark provenance distinct.
+          for source in bench/strong/release-results/*/summary.json; do
+            kind=$(basename "$(dirname "$source")")
+            cp "$source" "dist/benchmark-current-$kind.json"
+          done
+          cp bench/strong/REPORT.md dist/comparative-report.md
+          cp bench/strong/dependencies.arm64.json dist/benchmark-candidate-dependencies.json
+          cp bench/results-summary.json dist/benchmark-historical-1.6.json
 
           cp LICENSE dist/LICENSE
           cp NOTICE dist/NOTICE
@@ -370,13 +443,36 @@ jobs:
           CacheLib is licensed under Apache-2.0; see [\`NOTICE\`](https://github.com/${{ github.repository }}/blob/main/NOTICE).
           This project is not affiliated with, sponsored by, or endorsed by Meta Platforms, Inc.
 
+          ## Comparative qualification
+
+          The attached report records five independent 60-second repetitions
+          on a local native arm64 candidate with the runtime source fingerprint
+          and image ID stated there. It retains both the all-RAM 1 KiB loss to
+          Redis and the conditional hit-rate benefit of Navy on a reusable
+          working set larger than configured DRAM. Memcached extstore is the
+          faster flash-backed comparator in that measured trace. When all
+          alternatives were given enough DRAM to hold that set under the same
+          384 MiB service ceiling, Redis and Memcached were substantially
+          faster than Navy; the report includes those five-run results. The simulated
+          origin, additional flash resource, actual container memory, and
+          Docker Desktop page-cache limitations are disclosed. These figures
+          are not claims about physical SSD latency, a production deployment,
+          or native amd64 performance. The release workflow builds and
+          correctness-checks both native architectures from this tag.
+          Read the [versioned report](https://github.com/${{ github.repository }}/blob/v$V/bench/strong/REPORT.md)
+          and [raw run manifests](https://github.com/${{ github.repository }}/tree/v$V/bench/strong/runs)
+          before comparing workloads.
+
           ## Attached assets
 
           | File | What it is |
           |---|---|
           | \`cache.proto\` | Service definition, for generating clients without cloning |
           | \`provenance.json\` | Image digests and the exact upstream revision, machine-readable |
-          | \`benchmark-results.json\` | Raw measurements behind [BENCHMARKS.md](https://github.com/${{ github.repository }}/blob/main/BENCHMARKS.md) |
+          | \`benchmark-current-*.json\` | Generated current-version comparative summaries; raw runs are in \`bench/strong/runs/\` |
+          | \`comparative-report.md\` | Current-version implementation, flash, alternatives, and media assessment |
+          | \`benchmark-candidate-dependencies.json\` | Exact observed local arm64 candidate dependencies and binary checksum |
+          | \`benchmark-historical-1.6.json\` | Earlier, manually transcribed 1.6.0 summary behind [BENCHMARKS.md](https://github.com/${{ github.repository }}/blob/main/BENCHMARKS.md) |
           | \`LICENSE\`, \`NOTICE\` | Apache-2.0 and upstream attribution |
           | \`SHA256SUMS\` | Checksums for all of the above |
 
@@ -386,17 +482,146 @@ jobs:
           NOTES
           cat notes.md
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: |
+            notes.md
+            dist/*
+
+  verify:
+    name: Pull and verify versioned ${{ matrix.arch }} image
+    needs: manifest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull immutable versioned index and validate native architecture
+        run: |
+          set -euo pipefail
+          docker pull "$IMAGE@${{ needs.manifest.outputs.list }}"
+          arch=$(docker image inspect "$IMAGE@${{ needs.manifest.outputs.list }}" \
+            --format '{{.Architecture}}')
+          test "$arch" = '${{ matrix.arch }}'
+      - name: Build correctness client
+        run: docker build -f bench/investigation/Dockerfile.client -t cachelib-investigation-client:local .
+      - name: Versioned digest correctness and DRAM + SSD proof
+        run: |
+          scripts/release-smoke.sh "$IMAGE@${{ needs.manifest.outputs.list }}" \
+            '${{ needs.manifest.outputs.version }}' \
+            "/tmp/verify-flash-${{ matrix.arch }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verify-${{ matrix.arch }}
+          path: |
+            /tmp/verify-flash-${{ matrix.arch }}.json
+            /tmp/verify-flash-${{ matrix.arch }}-limits.json
+
+  promote:
+    name: Publish GitHub release, then promote latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [manifest, verify]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: .
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate tag and attached provenance before publishing
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "v${{ needs.manifest.outputs.version }}"
+          test "$(jq -r .commit dist/provenance.json)" = "$GITHUB_SHA"
+          test "$(jq -r .digests.index dist/provenance.json)" = '${{ needs.manifest.outputs.list }}'
+          ( cd dist && sha256sum -c SHA256SUMS )
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: v${{ steps.manifest.outputs.version }}
+          name: v${{ needs.manifest.outputs.version }}
           body_path: notes.md
           generate_release_notes: true
           files: |
             dist/cache.proto
             dist/provenance.json
-            dist/benchmark-results.json
+            dist/benchmark-current-*.json
+            dist/comparative-report.md
+            dist/benchmark-candidate-dependencies.json
+            dist/benchmark-historical-1.6.json
             dist/LICENSE
             dist/NOTICE
             dist/SHA256SUMS
+      - name: Promote latest only after native and pulled-digest verification
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            -t "$IMAGE:latest" "$IMAGE@${{ needs.manifest.outputs.list }}"
+          got=$(docker buildx imagetools inspect "$IMAGE:latest" \
+            --format '{{.Manifest.Digest}}')
+          test "$got" = '${{ needs.manifest.outputs.list }}'
+
+  postpublish:
+    name: Verify published release on ${{ matrix.arch }}
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [manifest, promote]
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Published tag, latest, and digest agree
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "v${{ needs.manifest.outputs.version }}" \
+            --repo "$GITHUB_REPOSITORY" --json url --jq .url
+          version_digest=$(docker buildx imagetools inspect \
+            "$IMAGE:${{ needs.manifest.outputs.version }}" --format '{{.Manifest.Digest}}')
+          latest_digest=$(docker buildx imagetools inspect \
+            "$IMAGE:latest" --format '{{.Manifest.Digest}}')
+          test "$version_digest" = '${{ needs.manifest.outputs.list }}'
+          test "$latest_digest" = "$version_digest"
+          docker pull "$IMAGE@$version_digest"
+          arch=$(docker image inspect "$IMAGE@$version_digest" --format '{{.Architecture}}')
+          test "$arch" = '${{ matrix.arch }}'
+      - name: Build correctness client
+        run: docker build -f bench/investigation/Dockerfile.client -t cachelib-investigation-client:local .
+      - name: Post-publication binary and flash checks
+        run: |
+          scripts/release-smoke.sh "$IMAGE@${{ needs.manifest.outputs.list }}" \
+            '${{ needs.manifest.outputs.version }}' \
+            "/tmp/postpublish-flash-${{ matrix.arch }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: postpublish-${{ matrix.arch }}
+          path: |
+            /tmp/postpublish-flash-${{ matrix.arch }}.json
+            /tmp/postpublish-flash-${{ matrix.arch }}-limits.json

@@ -1,0 +1,12 @@
+usage_usec 15235450
+user_usec 1067739
+system_usec 14167711
+nice_usec 0
+nr_periods 407
+nr_throttled 0
+throttled_usec 0
+nr_bursts 0
+burst_usec 0
+30228480
+36691968
+254:0 rbytes=0 wbytes=12288 rios=0 wios=3 dbytes=0 dios=0

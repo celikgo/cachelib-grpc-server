@@ -1,0 +1,23 @@
+[
+  "run",
+  "-d",
+  "--name",
+  "clinv-valkey-89b154b4",
+  "--network",
+  "clinv-4154bedf2ade",
+  "--cpus",
+  "4",
+  "--memory",
+  "768m",
+  "--memory-swap",
+  "768m",
+  "valkey/valkey:8.1-alpine",
+  "--save",
+  "",
+  "--appendonly",
+  "no",
+  "--maxmemory",
+  "100663296",
+  "--maxmemory-policy",
+  "allkeys-lru"
+]

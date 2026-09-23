@@ -5,12 +5,12 @@ this server lived as `standalone_server/` before being extracted into its own
 repository. Container images for every version below are published to
 [`ghcr.io/celikgo/cachelib-grpc-server`][pkg].
 
-## [1.8.0] — unreleased
+## [1.8.0] — 2026-09-23
 
 Correctness release. Three defects here could lose or corrupt a user's data or
 take the server down, and none of them had a test that would have caught it.
 
-**The hybrid DRAM+SSD tier has never worked.** Running the command in the
+**The previously published hybrid DRAM+SSD tier did not start.** Running the command in the
 README's "Hybrid DRAM + SSD" section against any published image exits at
 startup with `number of read/write threads should be set first as non-zero
 value`. `configureNvmCache` called `NavyConfig::enableAsyncIo()` with the
@@ -33,6 +33,14 @@ indefinitely and kept running after the client disconnected — on a port with n
 authentication.
 
 ### Fixed
+- The pinned gRPC v1.60.0 build now verifies the tag commit, fetches its exact
+  BoringSSL submodule tree as a SHA-256-checked archive when Git cannot serve
+  that historical object, and initializes the other required submodules
+  explicitly. CacheLib's pinned xz-5.2.5 manifest uses an accessible mirror
+  with the same archive checksum. Neither dependency was silently upgraded.
+- Flash hit/miss statistics now read CacheLib's actual `navy_lookups` and
+  `navy_succ_lookups` counters. The old names did not exist and returned zeros
+  even for correct Navy reads.
 - `--enable_nvm` starts. Navy's reader and writer thread counts are set before
   async I/O is enabled.
 - `Incr`, `Increment` and `Decrement` reject a value that is not entirely an
@@ -60,6 +68,15 @@ authentication.
   under review, and it now also starts the server with `--enable_nvm`.
 
 ### Added
+- Additive `Stats` fields 20–21 and Prometheus counters expose Navy
+  file-device bytes read/written. The legacy `nvm_used` field remains wire
+  compatible and is documented as cumulative bytes written, not occupied
+  capacity. File-device counters do not measure physical NAND traffic.
+- Native-client comparative and common-HTTP media-object harnesses, exact
+  environment manifests, and an SSD smoke that checks eviction, correct
+  flash reads, counters, and TTL. The release workflow now tests each native
+  architecture before push, verifies the immutable versioned digest on both
+  architectures, and promotes `latest` only after those checks.
 - 150 tests, up from 35. First coverage for `SetNX`, `Increment`, `Decrement`,
   `Incr`, `CompareAndSwap`, `Touch`, `GetTTL`, `MultiDelete`, `Flush`,
   `Pipeline` and the hybrid tier.
@@ -91,9 +108,9 @@ authentication.
 
 The `v1.7.0` tag exists but no image or GitHub release does: the Release
 workflow failed three times at `denied: permission_denied: write_package`. The
-package exists but has not granted this repository Actions write access, which
-is a separate, UI-only setting. `ghcr.io/celikgo/cachelib-grpc-server:latest`
-still resolves to 1.6.0.
+package exists but had not granted this repository Actions write access, which
+is a separate, UI-only setting. At that checkpoint,
+`ghcr.io/celikgo/cachelib-grpc-server:latest` still resolved to 1.6.0.
 
 Intended as the first release built and published by this repository's own CI,
 on native `amd64` and `arm64` runners rather than under QEMU emulation.

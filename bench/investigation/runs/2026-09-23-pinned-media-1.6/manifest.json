@@ -1,0 +1,77 @@
+{
+  "utc": "2026-09-23T11:35:41.964846+00:00",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "host_arch": "arm64",
+  "docker_version": "{\"Client\":{\"Version\":\"29.4.3\",\"ApiVersion\":\"1.54\",\"DefaultAPIVersion\":\"1.54\",\"GitCommit\":\"055a478\",\"GoVersion\":\"go1.26.2\",\"Os\":\"darwin\",\"Arch\":\"arm64\",\"BuildTime\":\"Wed May  6 17:06:34 2026\",\"Context\":\"desktop-linux\"},\"Server\":{\"Platform\":{\"Name\":\"Docker Desktop 4.74.0 (227015)\"},\"Version\":\"29.4.3\",\"ApiVersion\":\"1.54\",\"MinAPIVersion\":\"1.40\",\"Os\":\"linux\",\"Arch\":\"arm64\",\"Components\":[{\"Name\":\"Engine\",\"Version\":\"29.4.3\",\"Details\":{\"ApiVersion\":\"1.54\",\"Arch\":\"arm64\",\"BuildTime\":\"Wed May  6 17:09:05 2026\",\"Experimental\":\"false\",\"GitCommit\":\"56be731\",\"GoVersion\":\"go1.26.2\",\"KernelVersion\":\"6.12.76-linuxkit\",\"MinAPIVersion\":\"1.40\",\"Module\":\"github.com/moby/moby/v2\",\"ModuleVersion\":\"v2.0.0+unknown\",\"Os\":\"linux\"}},{\"Name\":\"containerd\",\"Version\":\"v2.2.3\",\"Details\":{\"GitCommit\":\"77c84241c7cbdd9b4eca2591793e3d4f4317c590\"}},{\"Name\":\"runc\",\"Version\":\"1.3.5\",\"Details\":{\"GitCommit\":\"v1.3.5-0-g488fc13e\"}},{\"Name\":\"docker-init\",\"Version\":\"0.19.0\",\"Details\":{\"GitCommit\":\"de40ad0\"}}],\"GitCommit\":\"56be731\",\"GoVersion\":\"go1.26.2\",\"KernelVersion\":\"6.12.76-linuxkit\",\"BuildTime\":\"2026-05-06T17:09:05.000000000+00:00\"}}\n",
+  "docker_info": {
+    "Architecture": "aarch64",
+    "CgroupDriver": "cgroupfs",
+    "CgroupVersion": "2",
+    "Driver": "overlay2",
+    "KernelVersion": "6.12.76-linuxkit",
+    "MemTotal": 29381500928,
+    "NCPU": 8,
+    "OSType": "linux",
+    "OperatingSystem": "Docker Desktop",
+    "OSVersion": "",
+    "ServerVersion": "29.4.3"
+  },
+  "client_image": {
+    "id": "sha256:b3e97e1d485df50f6bf73d445f45d8848b487786abb36ea0f9630912823cb415",
+    "repo_digests": [],
+    "labels": null,
+    "architecture": "arm64"
+  },
+  "images": {
+    "grpc": {
+      "id": "sha256:32e55bd7e64aced3c5aff460fd150f90ac2c67fcb8e5a1539dff2db0a317cf70",
+      "repo_digests": [
+        "ghcr.io/celikgo/cachelib-grpc-server@sha256:fea1a76b84a8c6e61bfdd30db100cf9f6bb330c6f93407e237909b9ad10a571a"
+      ],
+      "labels": {
+        "org.opencontainers.image.version": "24.04"
+      },
+      "architecture": "arm64"
+    },
+    "redis": {
+      "id": "sha256:e0e28b147e4fc2d7bdc28bab8a914a63a2e713fc0fcd09fcc97e24e423d3df1d",
+      "repo_digests": [
+        "redis@sha256:5517128c78ca95f28f7dc6a90e2f808f35f01a4a01c2c20e514571b4d9706275"
+      ],
+      "labels": null,
+      "architecture": "arm64"
+    },
+    "valkey": {
+      "id": "sha256:1090d9113780a6c818824835da50ad4ae9445283710722fcd4ad13cd9cab59a4",
+      "repo_digests": [
+        "valkey/valkey@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507"
+      ],
+      "labels": {
+        "org.opencontainers.image.source": "https://github.com/valkey-io/valkey"
+      },
+      "architecture": "arm64"
+    },
+    "memcached": {
+      "id": "sha256:1dd5bd4099e3cca31288437e2dd63d71878251e9a528afa6064a7fc061fd0d4b",
+      "repo_digests": [
+        "memcached@sha256:9e4de012dc607573052061c0bcb38abc775e1dd59b24e7ac38d1892842094aaf"
+      ],
+      "labels": null,
+      "architecture": "arm64"
+    }
+  },
+  "configuration": {
+    "engines": "grpc,redis,valkey,memcached",
+    "grpc_image": "ghcr.io/celikgo/cachelib-grpc-server:latest",
+    "output": "bench/investigation/runs/2026-09-23-pinned-media-1.6",
+    "level": "matrix",
+    "ram_mb": 96,
+    "ram_map": null,
+    "container_memory_mb": 768,
+    "server_cpuset": "0-3",
+    "client_cpuset": "4-5",
+    "flash_mb": 512,
+    "case": "media_256k"
+  },
+  "git_commit": "a4237c29f00aa819ad28d5ea94d3056026809bdb"
+}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="177" viewBox="0 0 760 177">
+<rect width="100%" height="100%" fill="white"/>
+<text x="20" y="30" font-family="sans-serif" font-size="18">Repeated 256 KiB objects, one reader</text>
+<text x="20" y="73" font-family="sans-serif" font-size="13">NGINX disk cache</text>
+<rect x="165" y="55" width="475" height="25" fill="#326baf"/>
+<text x="650" y="73" font-family="sans-serif" font-size="13">2803.773 HTTP requests/s</text>
+<text x="20" y="119" font-family="sans-serif" font-size="13">gRPC HTTP adapter</text>
+<rect x="165" y="101" width="289" height="25" fill="#326baf"/>
+<text x="464" y="119" font-family="sans-serif" font-size="13">1710.407 HTTP requests/s</text>
+</svg>

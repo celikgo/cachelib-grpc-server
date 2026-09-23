@@ -155,9 +155,12 @@ struct CacheStats {
   // NVM stats
   bool nvmEnabled = false;
   int64_t nvmSize = 0;
+  // Legacy wire/metric name: cumulative Navy device bytes written, not occupancy.
   int64_t nvmUsed = 0;
   int64_t nvmHitCount = 0;
   int64_t nvmMissCount = 0;
+  int64_t nvmDeviceBytesRead = 0;
+  int64_t nvmDeviceBytesWritten = 0;
 
   // Server stats
   int64_t uptimeSeconds = 0;

@@ -1,0 +1,75 @@
+{
+  "utc": "2026-09-23T17:00:23.347897+00:00",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "docker": {
+    "Architecture": "aarch64",
+    "CgroupVersion": "2",
+    "KernelVersion": "6.12.76-linuxkit",
+    "OperatingSystem": "Docker Desktop",
+    "ServerVersion": "29.4.3"
+  },
+  "git_commit": "a4237c29f00aa819ad28d5ea94d3056026809bdb",
+  "git_status": " M .dockerignore\n M .github/workflows/ci.yml\n M .github/workflows/release.yml\n M .gitignore\n M BENCHMARKS.md\n M CHANGELOG.md\n M CONTRIBUTING.md\n M CacheManager.cc\n M CacheManager.h\n M CacheServiceImpl.cc\n M Dockerfile\n M MetricsServer.cc\n M README.md\n M patches/README.md\n M proto/cache.proto\n M tests/CacheServiceTest.cc\n M tests/NvmHybridTest.cc\n?? bench/investigation/\n?? bench/strong/\n?? patches/0003-xz-download-url.patch\n?? scripts/\n",
+  "runtime_source_sha256": "e373c4966f00acfa0f086ceaa2a4794ea70b66520677de860c1d78746ea6af2d",
+  "images": {
+    "cachelib-candidate:1.8.0": {
+      "id": "sha256:ddf4a50f1612cc30bd20606f2018923707979141ddbbd609ddce70ac267de4a0",
+      "repo_digests": [],
+      "architecture": "arm64",
+      "labels": {
+        "io.celikgo.cachelib.upstream.repository": "https://github.com/facebook/CacheLib.git",
+        "io.celikgo.cachelib.upstream.revision": "2aa2afbe97deadfb00f15260b26b566354c57a78",
+        "org.opencontainers.image.description": "A standalone gRPC server for Meta's CacheLib: 19 RPCs over a Redis-style key/value surface, on a hybrid DRAM+SSD cache.",
+        "org.opencontainers.image.documentation": "https://github.com/celikgo/cachelib-grpc-server/blob/main/README.md",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.revision": "a4237c29f00aa819ad28d5ea94d3056026809bdb",
+        "org.opencontainers.image.source": "https://github.com/celikgo/cachelib-grpc-server",
+        "org.opencontainers.image.title": "cachelib-grpc-server",
+        "org.opencontainers.image.version": "1.8.0"
+      }
+    },
+    "nginx:1.29-alpine": {
+      "id": "sha256:7f7dcd27f920b22e980508bd5009b452e3d30b68c1041aa82e98e471d367db03",
+      "repo_digests": [
+        "nginx@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de"
+      ],
+      "architecture": "arm64",
+      "labels": {
+        "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+      }
+    },
+    "cachebench-go:rc": {
+      "id": "sha256:26cc5e59128f2140e04a6a78b38aa1d0520a352fe582982f3c71cb0cceb2eda7",
+      "repo_digests": [],
+      "architecture": "arm64",
+      "labels": null
+    },
+    "cachelib-investigation-client:local": {
+      "id": "sha256:4ed7ea272e276065c46112b2b9da1bfe47d025741941a959d638b3c99181d4a4",
+      "repo_digests": [],
+      "architecture": "arm64",
+      "labels": null
+    }
+  },
+  "configuration": {
+    "grpc_image": "cachelib-candidate:1.8.0",
+    "output": "bench/strong/runs/rc-http-secondary",
+    "cases": "onepass_256k_c8,recent_replay_256k_c8,repeated_1m_c8",
+    "reps": 2,
+    "seconds": 30,
+    "warmup": 10
+  },
+  "cache_path_budget": {
+    "cpus": 2,
+    "memory_mib": 768,
+    "cpuset": "0-1"
+  },
+  "grpc_path_split": {
+    "grpc": "1 CPU/384 MiB",
+    "Python HTTP adapter": "1 CPU/384 MiB"
+  },
+  "origin": "simulated 5 ms, separate 2 CPU/512 MiB container on CPUs 6-7",
+  "nginx_disk_cache": "512 MiB max, bind-mounted Docker Desktop filesystem; page cache not disabled",
+  "client": "separate 4 CPU/1024 MiB cgroup on CPUs 2-5, compiled Go, full body verification",
+  "origin_direct": "one-pass reference only; no cache path and no equal-resource cache claim"
+}

@@ -1,0 +1,112 @@
+{
+  "source": "bench/strong/runs/pilot-http-old1.6",
+  "kind": "http",
+  "groups": {
+    "onepass_256k_c8/grpc_adapter": {
+      "n": 1,
+      "medians": {
+        "objects_s": 732.5435153783762,
+        "payload_mib_s": 183.13587884459406,
+        "p50_ms": 10.092,
+        "p95_ms": 16.186,
+        "p99_ms": 21.931,
+        "p999_ms": 28.435,
+        "hit_ratio": 0.0,
+        "origins": 2203,
+        "origin_bytes": 577503232,
+        "server_cpu_us_per_object": 1499.02088061734,
+        "server_memory_peak_bytes": 289316864,
+        "client_cpu_s": 1.403195
+      },
+      "range_objects_s": [
+        732.5435153783762,
+        732.5435153783762
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "onepass_256k_c8/nginx": {
+      "n": 1,
+      "medians": {
+        "objects_s": 343.4870870529863,
+        "payload_mib_s": 85.87177176324657,
+        "p50_ms": 21.433,
+        "p95_ms": 37.881,
+        "p99_ms": 47.441,
+        "p999_ms": 52.765,
+        "hit_ratio": 0.0,
+        "origins": 1043,
+        "origin_bytes": 273416192,
+        "server_cpu_us_per_object": 655.443911792905,
+        "server_memory_peak_bytes": 12062720,
+        "client_cpu_s": 0.8129
+      },
+      "range_objects_s": [
+        343.4870870529863,
+        343.4870870529863
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "repeated_256k_c8/grpc_adapter": {
+      "n": 1,
+      "medians": {
+        "objects_s": 1284.7111802840498,
+        "payload_mib_s": 321.17779507101244,
+        "p50_ms": 4.805,
+        "p95_ms": 14.627,
+        "p99_ms": 24.495,
+        "p999_ms": 32.422,
+        "hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "server_cpu_us_per_object": 818.6598392533057,
+        "server_memory_peak_bytes": 231526400,
+        "client_cpu_s": 2.37422
+      },
+      "range_objects_s": [
+        1284.7111802840498,
+        1284.7111802840498
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "repeated_256k_c8/nginx": {
+      "n": 1,
+      "medians": {
+        "objects_s": 1601.3749622493747,
+        "payload_mib_s": 400.34374056234367,
+        "p50_ms": 3.6,
+        "p95_ms": 12.972,
+        "p99_ms": 18.013,
+        "p999_ms": 22.962,
+        "hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "server_cpu_us_per_object": 184.82349272349273,
+        "server_memory_peak_bytes": 25493504,
+        "client_cpu_s": 2.559882
+      },
+      "range_objects_s": [
+        1601.3749622493747,
+        1601.3749622493747
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    }
+  },
+  "failed_runs": [],
+  "method": "Per-run p50/p95/p99/p999 are not pooled. Group medians use run values; 95% intervals are 10,000 seeded bootstrap resamples of run medians when n>=5. Small-n bootstrap intervals are descriptive, not a guarantee of coverage."
+}

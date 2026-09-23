@@ -1,0 +1,115 @@
+{
+  "source": "bench/strong/runs/rc-http-onepass-reuse",
+  "kind": "http",
+  "groups": {
+    "onepass_256k_c8/grpc_adapter": {
+      "n": 2,
+      "medians": {
+        "objects_s": 838.3574422589041,
+        "payload_mib_s": 209.58936056472604,
+        "p50_ms": 9.026499999999999,
+        "p95_ms": 13.322199999999999,
+        "p99_ms": 15.934935,
+        "p999_ms": 19.0070105,
+        "hit_ratio": 0.0,
+        "byte_hit_ratio": 0.0,
+        "origins": 25157.5,
+        "origin_bytes": 6594887680.0,
+        "origin_bytes_avoided": 0.0,
+        "server_cpu_us_per_object": 929.9463941511837,
+        "server_memory_peak_bytes": 158011392.0,
+        "client_cpu_s": 12.6030825,
+        "client_memory_peak_bytes": 27432960.0,
+        "cache_file_allocated_bytes": 0.0,
+        "adapter_cpu_s": 17.328633,
+        "grpc_server_cpu_s": 6.063214500000001,
+        "adapter_memory_peak_bytes": 35878912.0,
+        "grpc_server_memory_peak_bytes": 122132480.0,
+        "origin_cpu_s": 4.2971305,
+        "origin_memory_peak_bytes": 30887936.0,
+        "path_component_peak_sum_upper_bound_bytes": 158011392.0
+      },
+      "range_objects_s": [
+        830.9950335965208,
+        845.7198509212875
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0",
+        "r1"
+      ],
+      "errors": 0
+    },
+    "onepass_256k_c8/nginx": {
+      "n": 2,
+      "medians": {
+        "objects_s": 692.3911416302353,
+        "payload_mib_s": 173.09778540755883,
+        "p50_ms": 10.67,
+        "p95_ms": 18.2194,
+        "p99_ms": 25.330119999999994,
+        "p999_ms": 44.07409,
+        "hit_ratio": 0.0,
+        "byte_hit_ratio": 0.0,
+        "origins": 20778.0,
+        "origin_bytes": 5446828032.0,
+        "origin_bytes_avoided": 0.0,
+        "server_cpu_us_per_object": 454.73663739298036,
+        "server_memory_peak_bytes": 37447680.0,
+        "client_cpu_s": 10.8518315,
+        "client_memory_peak_bytes": 18446336.0,
+        "cache_file_allocated_bytes": 1510246400.0,
+        "nginx_cpu_s": 9.442865000000001,
+        "origin_cpu_s": 3.7340005,
+        "origin_memory_peak_bytes": 31379456.0,
+        "path_component_peak_sum_upper_bound_bytes": 37447680.0
+      },
+      "range_objects_s": [
+        674.9439329864624,
+        709.8383502740082
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0",
+        "r1"
+      ],
+      "errors": 0
+    },
+    "onepass_256k_c8/origin_direct": {
+      "n": 2,
+      "medians": {
+        "objects_s": 855.4838962052701,
+        "payload_mib_s": 213.87097405131752,
+        "p50_ms": 8.785499999999999,
+        "p95_ms": 13.873949999999999,
+        "p99_ms": 16.718690000000002,
+        "p999_ms": 20.103310999999998,
+        "hit_ratio": 0.0,
+        "byte_hit_ratio": 0.0,
+        "origins": 25672.0,
+        "origin_bytes": 6729760768.0,
+        "origin_bytes_avoided": 0.0,
+        "server_cpu_us_per_object": 0.0,
+        "server_memory_peak_bytes": 0.0,
+        "client_cpu_s": 25.652395,
+        "client_memory_peak_bytes": 20250624.0,
+        "cache_file_allocated_bytes": 0.0,
+        "origin_cpu_s": 9.6192285,
+        "origin_memory_peak_bytes": 30887936.0,
+        "path_component_peak_sum_upper_bound_bytes": 0.0
+      },
+      "range_objects_s": [
+        850.5149511940289,
+        860.4528412165113
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0",
+        "r1"
+      ],
+      "errors": 0
+    }
+  },
+  "failed_runs": [],
+  "method": "Per-run p50/p95/p99/p999 are not pooled. Group medians use run values; 95% intervals are 10,000 seeded bootstrap resamples of run medians when n>=5. Small-n bootstrap intervals are descriptive, not a guarantee of coverage."
+}

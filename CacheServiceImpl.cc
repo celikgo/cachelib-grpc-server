@@ -657,6 +657,8 @@ CacheServiceImpl::CacheServiceImpl(std::shared_ptr<CacheManager> cacheManager)
   response->set_nvm_enabled(stats.nvmEnabled);
   response->set_nvm_size(stats.nvmSize);
   response->set_nvm_used(stats.nvmUsed);
+  response->set_nvm_device_bytes_read(stats.nvmDeviceBytesRead);
+  response->set_nvm_device_bytes_written(stats.nvmDeviceBytesWritten);
   response->set_nvm_hit_count(stats.nvmHitCount);
   response->set_nvm_miss_count(stats.nvmMissCount);
 

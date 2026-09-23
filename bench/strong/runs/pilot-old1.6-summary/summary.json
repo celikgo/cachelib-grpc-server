@@ -1,0 +1,60 @@
+{
+  "source": "bench/strong/runs/pilot-old1.6",
+  "kind": "kv",
+  "groups": {
+    "hit_1k_c8/grpc": {
+      "n": 1,
+      "medians": {
+        "objects_s": 42116.6544933868,
+        "payload_mib_s": 41.129545403698046,
+        "p50_ms": 0.166083,
+        "p95_ms": 0.298958,
+        "p99_ms": 0.8385249399999971,
+        "p999_ms": 1.9169771559999995,
+        "hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "server_cpu_us_per_object": 60.01638698158542,
+        "server_memory_peak_bytes": 159485952,
+        "client_cpu_s": 9.017422
+      },
+      "range_objects_s": [
+        42116.6544933868,
+        42116.6544933868
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "hit_1k_c8/redis": {
+      "n": 1,
+      "medians": {
+        "objects_s": 114066.53153879907,
+        "payload_mib_s": 111.39309720585847,
+        "p50_ms": 0.075292,
+        "p95_ms": 0.105417,
+        "p99_ms": 0.129375,
+        "p999_ms": 0.2814157499999999,
+        "hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "server_cpu_us_per_object": 6.354530120735424,
+        "server_memory_peak_bytes": 13889536,
+        "client_cpu_s": 10.202115
+      },
+      "range_objects_s": [
+        114066.53153879907,
+        114066.53153879907
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    }
+  },
+  "failed_runs": [],
+  "method": "Per-run p50/p95/p99/p999 are not pooled. Group medians use run values; 95% intervals are 10,000 seeded bootstrap resamples of run medians when n>=5. Small-n bootstrap intervals are descriptive, not a guarantee of coverage."
+}

@@ -1,6 +1,9 @@
 .git
 .github
 bench/results
+bench/investigation/runs
+bench/strong/runs
+bench/strong/release-results
 *.md
 !patches/README.md
 .idea

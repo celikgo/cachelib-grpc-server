@@ -1,0 +1,22 @@
+[
+  "docker",
+  "run",
+  "-d",
+  "--name",
+  "cm-cache-db79776d",
+  "--network",
+  "cm-eef8841a",
+  "--network-alias",
+  "cache",
+  "--cpus",
+  "1",
+  "--cpuset-cpus",
+  "0-1",
+  "--memory",
+  "384m",
+  "--memory-swap",
+  "384m",
+  "cachelib-candidate:1.8.0",
+  "--cache_size=100663296",
+  "--metrics_port=0"
+]

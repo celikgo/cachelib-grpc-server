@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="269" viewBox="0 0 1100 269">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-family="sans-serif" font-size="18">Object hit ratio</text>
+<text x="400" y="52" font-family="sans-serif" font-size="12">fraction; median of independent runs</text>
+<text x="18" y="82" font-family="monospace" font-size="12">onepass_256k_c8 / grpc_adapter</text>
+<rect x="400" y="68" width="0" height="18" fill="#1d6fa5"/>
+<text x="408" y="82" font-family="sans-serif" font-size="12">0.0</text>
+<text x="18" y="109" font-family="monospace" font-size="12">onepass_256k_c8 / nginx</text>
+<rect x="400" y="95" width="0" height="18" fill="#367b45"/>
+<text x="408" y="109" font-family="sans-serif" font-size="12">0.0</text>
+<text x="18" y="136" font-family="monospace" font-size="12">onepass_256k_c8 / origin_direct</text>
+<rect x="400" y="122" width="0" height="18" fill="#666"/>
+<text x="408" y="136" font-family="sans-serif" font-size="12">0.0</text>
+<text x="18" y="163" font-family="monospace" font-size="12">recent_replay_256k_c8 / grpc_adapter</text>
+<rect x="400" y="149" width="549" height="18" fill="#1d6fa5"/>
+<text x="957" y="163" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="190" font-family="monospace" font-size="12">recent_replay_256k_c8 / nginx</text>
+<rect x="400" y="176" width="549" height="18" fill="#367b45"/>
+<text x="957" y="190" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="217" font-family="monospace" font-size="12">repeated_1m_c8 / grpc_adapter</text>
+<rect x="400" y="203" width="550" height="18" fill="#1d6fa5"/>
+<text x="958" y="217" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="244" font-family="monospace" font-size="12">repeated_1m_c8 / nginx</text>
+<rect x="400" y="230" width="550" height="18" fill="#367b45"/>
+<text x="958" y="244" font-family="sans-serif" font-size="12">1.0</text>
+</svg>

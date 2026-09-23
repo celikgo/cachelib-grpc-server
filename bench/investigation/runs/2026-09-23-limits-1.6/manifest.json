@@ -1,0 +1,5 @@
+{
+  "utc": "2026-09-23T11:27:38.832364+00:00",
+  "image": "ghcr.io/celikgo/cachelib-grpc-server:latest",
+  "repo_digests": "[\"ghcr.io/celikgo/cachelib-grpc-server@sha256:fea1a76b84a8c6e61bfdd30db100cf9f6bb330c6f93407e237909b9ad10a571a\"]"
+}

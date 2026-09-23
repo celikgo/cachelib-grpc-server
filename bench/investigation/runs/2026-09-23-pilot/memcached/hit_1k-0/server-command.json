@@ -1,0 +1,23 @@
+[
+  "run",
+  "-d",
+  "--name",
+  "clinv-memcached-098cd2b0",
+  "--network",
+  "clinv-4e5a895236a6",
+  "--cpus",
+  "4",
+  "--memory",
+  "768m",
+  "--memory-swap",
+  "768m",
+  "memcached:1.6-alpine",
+  "-m",
+  "96",
+  "-t",
+  "4",
+  "-I",
+  "5m",
+  "-U",
+  "0"
+]

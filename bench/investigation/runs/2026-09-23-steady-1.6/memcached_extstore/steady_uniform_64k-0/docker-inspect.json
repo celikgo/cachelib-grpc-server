@@ -1,0 +1,234 @@
+[
+    {
+        "Id": "c7f8d7a6d17198e2bd30a4b105a385d87656083082a0644e7a4ff4256a31d095",
+        "Created": "2026-09-23T11:33:44.953386422Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "-m",
+            "96",
+            "-t",
+            "4",
+            "-I",
+            "5m",
+            "-U",
+            "0",
+            "-o",
+            "ext_path=/data/extstore:512m,ext_item_size=2048,ext_wbuf_size=8"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 7126,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-23T11:33:44.977390089Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:1dd5bd4099e3cca31288437e2dd63d71878251e9a528afa6064a7fc061fd0d4b",
+        "ResolvConfPath": "/var/lib/docker/containers/c7f8d7a6d17198e2bd30a4b105a385d87656083082a0644e7a4ff4256a31d095/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/c7f8d7a6d17198e2bd30a4b105a385d87656083082a0644e7a4ff4256a31d095/hostname",
+        "HostsPath": "/var/lib/docker/containers/c7f8d7a6d17198e2bd30a4b105a385d87656083082a0644e7a4ff4256a31d095/hosts",
+        "LogPath": "/var/lib/docker/containers/c7f8d7a6d17198e2bd30a4b105a385d87656083082a0644e7a4ff4256a31d095/c7f8d7a6d17198e2bd30a4b105a385d87656083082a0644e7a4ff4256a31d095-json.log",
+        "Name": "/clinv-memcached-extstore-91057b8d",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "clinv-9b85f32e67a8",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 805306368,
+            "NanoCpus": 4000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "0-3",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 805306368,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "Mounts": [
+                {
+                    "Type": "bind",
+                    "Source": "/Users/celikgo/IdeaProjects/engineering/cachelib-grpc-server/bench/investigation/runs/2026-09-23-steady-1.6/memcached_extstore/steady_uniform_64k-0/flash",
+                    "Target": "/data"
+                }
+            ],
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "c7f8d7a6d17198e2bd30a4b105a385d87656083082a0644e7a4ff4256a31d095",
+                "LowerDir": "/var/lib/docker/overlay2/0a5a7dc9c649a8248ab491a6ab008722ab29317f5bed5c8483c3a47731c1eab6-init/diff:/var/lib/docker/overlay2/f4399b7818cc7bbeeb01c2300a898e75aeb2824fd231b5ed251b4da9224679d5/diff:/var/lib/docker/overlay2/e1c8a38630ba95b3de9157b7d8a4150d4503fcf53985684cfd8c0f235ed79a87/diff:/var/lib/docker/overlay2/fff61bd587c809d24ed750102d053f0ea35bcf990701d0972fcd7cb8efcfde4f/diff:/var/lib/docker/overlay2/7cd50791d30407a088357437c9e442df73666548b7f4dbf5b83e1c074e55a599/diff:/var/lib/docker/overlay2/f3235832351801633d2c631f6a68de92c487231afd64acf9d3d43a8036f64192/diff:/var/lib/docker/overlay2/aeb245afb49b48197de2a50ce6c401f5428f14bead6126645898d3c4accd3809/diff",
+                "MergedDir": "/var/lib/docker/overlay2/0a5a7dc9c649a8248ab491a6ab008722ab29317f5bed5c8483c3a47731c1eab6/merged",
+                "UpperDir": "/var/lib/docker/overlay2/0a5a7dc9c649a8248ab491a6ab008722ab29317f5bed5c8483c3a47731c1eab6/diff",
+                "WorkDir": "/var/lib/docker/overlay2/0a5a7dc9c649a8248ab491a6ab008722ab29317f5bed5c8483c3a47731c1eab6/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/Users/celikgo/IdeaProjects/engineering/cachelib-grpc-server/bench/investigation/runs/2026-09-23-steady-1.6/memcached_extstore/steady_uniform_64k-0/flash",
+                "Destination": "/data",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "c7f8d7a6d171",
+            "Domainname": "",
+            "User": "memcache",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "11211/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "MEMCACHED_VERSION=1.6.45",
+                "MEMCACHED_URL=https://memcached.org/files/memcached-1.6.45.tar.gz",
+                "MEMCACHED_SHA1=45038980ea7045a548b9b5b5125ef7116312a768"
+            ],
+            "Cmd": [
+                "-m",
+                "96",
+                "-t",
+                "4",
+                "-I",
+                "5m",
+                "-U",
+                "0",
+                "-o",
+                "ext_path=/data/extstore:512m,ext_item_size=2048,ext_wbuf_size=8"
+            ],
+            "Image": "memcached:1.6-alpine",
+            "Volumes": null,
+            "WorkingDir": "/",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "Labels": {},
+            "StopTimeout": 1
+        },
+        "NetworkSettings": {
+            "SandboxID": "077aef94d776e3955f61faa70eb74117ac1daf77a46b602742f0b04558c58a4e",
+            "SandboxKey": "/var/run/docker/netns/077aef94d776",
+            "Ports": {
+                "11211/tcp": null
+            },
+            "Networks": {
+                "clinv-9b85f32e67a8": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "6b4b5e2e65a79b6d1c4cf6667bc6edcc7cd5d6027db3cb572423c8398cf52523",
+                    "EndpointID": "f97b8d3a405c5dfa5d99657efe0cb0261d05745651292dcacb16d81bbb0cd758",
+                    "Gateway": "",
+                    "IPAddress": "172.18.0.2",
+                    "MacAddress": "62:f3:a7:dd:cd:99",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "clinv-memcached-extstore-91057b8d",
+                        "c7f8d7a6d171"
+                    ]
+                }
+            }
+        }
+    }
+]

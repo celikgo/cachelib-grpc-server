@@ -1,0 +1,64 @@
+{
+  "args": {
+    "backend": "memcached",
+    "batch_kind": "multiget",
+    "batch_size": 16,
+    "command": "run",
+    "concurrency": 1,
+    "host": "clinv-memcached-dc09cb5c",
+    "mode": "origin",
+    "objects": 2048,
+    "origin_ms": 5.0,
+    "pattern": "uniform",
+    "port": 11211,
+    "preload": true,
+    "requests": 5000,
+    "run_id": "steady_uniform_64k-0",
+    "seed": 20260923,
+    "value_bytes": 65536,
+    "warmup": 1000
+  },
+  "backend": "memcached",
+  "byte_hits": 182321152,
+  "definitions": {
+    "operation": "one object GET plus optional origin delay and cache SET on miss; mixed includes SET; bypass models only origin delay",
+    "origin_bytes_avoided": "hits times fixed object size, relative to fetching every request",
+    "payload_bytes": "bytes in successful cache GET responses"
+  },
+  "elapsed_s": 9.252875921000054,
+  "error_examples": [],
+  "errors": 0,
+  "latency_ms": {
+    "p50": 0.360208,
+    "p95": 7.5725,
+    "p99": 7.879095499999999
+  },
+  "measured_operations": 4000,
+  "object_hits": 2782,
+  "origin_bytes": 79822848,
+  "origin_bytes_avoided": 182321152,
+  "origin_requests": 1218,
+  "payload_mib_s": 18.791454838962924,
+  "preloaded_objects": 2048,
+  "read_operations": 4000,
+  "schema": 1,
+  "stats_after": {
+    "bytes": 92529144,
+    "curr_items": 1410,
+    "evictions": 2175,
+    "get_hits": 3470,
+    "get_misses": 1541,
+    "version": "1.6.45"
+  },
+  "stats_before": {
+    "bytes": 92529436,
+    "curr_items": 1410,
+    "evictions": 957,
+    "get_hits": 688,
+    "get_misses": 323,
+    "version": "1.6.45"
+  },
+  "successful_ops_s": 432.29802648944184,
+  "warmup_operations": 1000,
+  "write_operations": 0
+}

@@ -1,0 +1,15 @@
+[
+  "run",
+  "-d",
+  "--name",
+  "cllimit-server-d788deb625",
+  "--network",
+  "cllimit-d788deb625",
+  "--cpus",
+  "4",
+  "--memory",
+  "768m",
+  "ghcr.io/celikgo/cachelib-grpc-server:latest",
+  "--cache_size=100663296",
+  "--metrics_port=0"
+]

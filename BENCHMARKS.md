@@ -1,5 +1,9 @@
 # Benchmarks
 
+This page preserves the published 1.6.0 RAM-only measurements. The
+[1.8.0 comparative qualification](bench/strong/REPORT.md) has separate raw
+results, a stronger compiled-client methodology, and DRAM+flash tests.
+
 All numbers below were measured on the hardware stated here, with the harness
 in [`bench/`](bench/). Nothing is extrapolated, and nothing is copied from
 CacheLib's own published figures. Re-run it yourself with `./bench/run.sh`.
@@ -53,8 +57,8 @@ so p99.9 is a real measurement rather than a p99 fallback.
 **Reading the curve.** Throughput climbs to roughly 33k req/s at
 concurrency 100 and then flattens; past that point additional concurrency buys
 almost no throughput and costs a great deal of tail latency (p99 goes from
-6.8 ms at c=100 to 29.2 ms at c=400). Concurrency ~100 is
-the knee, and the sensible place to operate.
+6.8 ms at c=100 to 29.2 ms at c=400). Concurrency ~100 is the knee for this
+particular workload and environment.
 
 Unloaded round-trip latency is **0.11 ms p50** (c=1), which is the
 number to use when reasoning about a single cache lookup on the request path.
@@ -75,11 +79,11 @@ wide at c=50. That is the measurement environment, not the server.
 | `Ping` (transport floor) | 34,907 | 0.72 ms | 3.02 ms | 8.15 ms | 0 |
 <!-- END GENERATED: operations -->
 
-`Ping` does no cache work at all, so it measures the gRPC transport floor.
-`Get` reaches <!-- BEGIN GENERATED: get-vs-ping -->91%<!-- END GENERATED: get-vs-ping --> of that floor — meaning the CacheLib
-lookup itself is nearly free at this scale and the cost is dominated by gRPC
-framing and syscalls, not by the cache. Optimising the cache would not move
-these numbers; optimising the transport would.
+`Ping` does no cache work, but still exercises gRPC. `Get` reaches
+<!-- BEGIN GENERATED: get-vs-ping -->91%<!-- END GENERATED: get-vs-ping --> of its throughput in this run. That comparison alone cannot assign costs to
+gRPC framing, protobuf serialization, copies, allocation, or the CacheLib
+lookup. A profile or controlled ablation would be needed to identify a
+bottleneck.
 
 ## Reproducing
 

@@ -1,0 +1,11 @@
+diff --git a/build/fbcode_builder/manifests/xz b/build/fbcode_builder/manifests/xz
+--- a/build/fbcode_builder/manifests/xz
++++ b/build/fbcode_builder/manifests/xz
+@@ -13,6 +13,6 @@ xz-devel
+ 
+ [download]
+-url = https://tukaani.org/xz/xz-5.2.5.tar.gz
++url = https://www.tukaani.org/xz/xz-5.2.5.tar.gz
+ sha256 = f6f4910fd033078738bd82bfba4f49219d03b17eb0794eb91efbae419f4aba10
+ 
+ [build]
