@@ -1,0 +1,6 @@
+{
+  "input_directories": [
+    "bench/investigation/runs/2026-09-23-pinned-media-1.6"
+  ],
+  "selection_rule": "later engine/case result replaces earlier; raw inputs preserved"
+}

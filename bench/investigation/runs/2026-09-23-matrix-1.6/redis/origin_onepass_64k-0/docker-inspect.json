@@ -1,0 +1,225 @@
+[
+    {
+        "Id": "dc13a7d11bbc01c5b1a98a682136c6e5be0df4f2753c191e764a05c9f0f55816",
+        "Created": "2026-09-23T10:49:46.839190669Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "--save",
+            "",
+            "--appendonly",
+            "no",
+            "--maxmemory",
+            "100663296",
+            "--maxmemory-policy",
+            "allkeys-lru"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 63662,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-23T10:49:46.869570669Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:e0e28b147e4fc2d7bdc28bab8a914a63a2e713fc0fcd09fcc97e24e423d3df1d",
+        "ResolvConfPath": "/var/lib/docker/containers/dc13a7d11bbc01c5b1a98a682136c6e5be0df4f2753c191e764a05c9f0f55816/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/dc13a7d11bbc01c5b1a98a682136c6e5be0df4f2753c191e764a05c9f0f55816/hostname",
+        "HostsPath": "/var/lib/docker/containers/dc13a7d11bbc01c5b1a98a682136c6e5be0df4f2753c191e764a05c9f0f55816/hosts",
+        "LogPath": "/var/lib/docker/containers/dc13a7d11bbc01c5b1a98a682136c6e5be0df4f2753c191e764a05c9f0f55816/dc13a7d11bbc01c5b1a98a682136c6e5be0df4f2753c191e764a05c9f0f55816-json.log",
+        "Name": "/clinv-redis-1db2014b",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "clinv-4154bedf2ade",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 805306368,
+            "NanoCpus": 4000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 805306368,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "dc13a7d11bbc01c5b1a98a682136c6e5be0df4f2753c191e764a05c9f0f55816",
+                "LowerDir": "/var/lib/docker/overlay2/5b1eca77a3ebe01f1f475b5adc56f9fd684e9401bc3e7f3cb9fb89da444cf3fe-init/diff:/var/lib/docker/overlay2/7bd4db9c9ecd1014e50fbc19a96aa183562f4260da43465020695ec748e9273d/diff:/var/lib/docker/overlay2/e66023fa77d0b20ffbb995b248f232f08f9eb061e39cfd7383f891d9927b8fdc/diff:/var/lib/docker/overlay2/b635f2b607035a7d91ddd24f7b8bbacf001926d2da493cee5428a8bbd2419108/diff:/var/lib/docker/overlay2/4179e4d400dba8b36b190a583d490c62cdaf87d456841b905c16941782610527/diff:/var/lib/docker/overlay2/6cb7db22e2f171f6aa43d9ca8fe6f9bbe519564612f7004d8d2e3cd44c48fa28/diff:/var/lib/docker/overlay2/0bf205d01efdf26310b715d1cc8873c0df50d2e24cd99f53ee5598175d2dbe35/diff:/var/lib/docker/overlay2/0d73cfb95732344cba846731303b9e04c6536089552ef3c9e10866c010a277db/diff",
+                "MergedDir": "/var/lib/docker/overlay2/5b1eca77a3ebe01f1f475b5adc56f9fd684e9401bc3e7f3cb9fb89da444cf3fe/merged",
+                "UpperDir": "/var/lib/docker/overlay2/5b1eca77a3ebe01f1f475b5adc56f9fd684e9401bc3e7f3cb9fb89da444cf3fe/diff",
+                "WorkDir": "/var/lib/docker/overlay2/5b1eca77a3ebe01f1f475b5adc56f9fd684e9401bc3e7f3cb9fb89da444cf3fe/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "volume",
+                "Name": "9495a0eb4b9cf8ef575e9b5816ccfcba5afeeb187e94b41a78d8f7a165e76ab7",
+                "Source": "/var/lib/docker/volumes/9495a0eb4b9cf8ef575e9b5816ccfcba5afeeb187e94b41a78d8f7a165e76ab7/_data",
+                "Destination": "/data",
+                "Driver": "local",
+                "Mode": "",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+        "Config": {
+            "Hostname": "dc13a7d11bbc",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "6379/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "REDIS_VERSION=8.2.10"
+            ],
+            "Cmd": [
+                "--save",
+                "",
+                "--appendonly",
+                "no",
+                "--maxmemory",
+                "100663296",
+                "--maxmemory-policy",
+                "allkeys-lru"
+            ],
+            "Image": "redis:8.2-alpine",
+            "Volumes": {
+                "/data": {}
+            },
+            "WorkingDir": "/data",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "Labels": {},
+            "StopTimeout": 1
+        },
+        "NetworkSettings": {
+            "SandboxID": "26dd4aa0855a7649421ddbadb5eb51aaedd4d9f1b83292e0747aa2e41f7297f7",
+            "SandboxKey": "/var/run/docker/netns/26dd4aa0855a",
+            "Ports": {
+                "6379/tcp": null
+            },
+            "Networks": {
+                "clinv-4154bedf2ade": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "17f6a11b5adc277fce08c3ea51ae3a4122f2cb8078ec6da6406721497779c248",
+                    "EndpointID": "d1647935fb0ace1abb80d6d45ce6318d5b03b7db4fd5ba4bae729d3e372b8273",
+                    "Gateway": "",
+                    "IPAddress": "172.18.0.2",
+                    "MacAddress": "32:67:24:36:79:72",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "clinv-redis-1db2014b",
+                        "dc13a7d11bbc"
+                    ]
+                }
+            }
+        }
+    }
+]

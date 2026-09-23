@@ -1,0 +1,320 @@
+{
+  "source": "bench/strong/runs/pilot-http-current",
+  "kind": "http",
+  "groups": {
+    "onepass_256k_c8/grpc_adapter": {
+      "n": 1,
+      "medians": {
+        "objects_s": 771.2714245418508,
+        "payload_mib_s": 192.8178561354627,
+        "p50_ms": 9.838000000000001,
+        "p95_ms": 14.158299999999997,
+        "p99_ms": 17.178639999999998,
+        "hit_ratio": 0.0,
+        "byte_hit_ratio": 0.0,
+        "origins": 7720,
+        "origin_bytes": 2023751680,
+        "origin_bytes_avoided": 0,
+        "server_cpu_us_per_object": 1091.9901554404148,
+        "server_memory_peak_bytes": 155353088,
+        "client_cpu_s": 4.06352,
+        "client_memory_peak_bytes": 18997248,
+        "cache_file_allocated_bytes": 0,
+        "adapter_cpu_s": 6.509572,
+        "grpc_server_cpu_s": 1.920592,
+        "adapter_memory_peak_bytes": 36368384,
+        "grpc_server_memory_peak_bytes": 118984704,
+        "origin_cpu_s": 3.549583,
+        "origin_memory_peak_bytes": 29659136,
+        "path_component_peak_sum_upper_bound_bytes": 155353088
+      },
+      "range_objects_s": [
+        771.2714245418508,
+        771.2714245418508
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "onepass_256k_c8/nginx": {
+      "n": 1,
+      "medians": {
+        "objects_s": 490.0226639279143,
+        "payload_mib_s": 122.50566598197858,
+        "p50_ms": 15.626999999999999,
+        "p95_ms": 22.521649999999998,
+        "p99_ms": 31.013379999999994,
+        "hit_ratio": 0.0,
+        "byte_hit_ratio": 0.0,
+        "origins": 4904,
+        "origin_bytes": 1285554176,
+        "origin_bytes_avoided": 0,
+        "server_cpu_us_per_object": 465.26896411092986,
+        "server_memory_peak_bytes": 24928256,
+        "client_cpu_s": 2.682318,
+        "client_memory_peak_bytes": 19836928,
+        "cache_file_allocated_bytes": 874332160,
+        "nginx_cpu_s": 2.281679,
+        "origin_cpu_s": 2.272644,
+        "origin_memory_peak_bytes": 29659136,
+        "path_component_peak_sum_upper_bound_bytes": 24928256
+      },
+      "range_objects_s": [
+        490.0226639279143,
+        490.0226639279143
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "onepass_256k_c8/origin_direct": {
+      "n": 1,
+      "medians": {
+        "objects_s": 836.529949124672,
+        "payload_mib_s": 209.132487281168,
+        "p50_ms": 8.852,
+        "p95_ms": 14.329399999999998,
+        "p99_ms": 17.256329999999995,
+        "hit_ratio": 0.0,
+        "byte_hit_ratio": 0.0,
+        "origins": 8374,
+        "origin_bytes": 2195193856,
+        "origin_bytes_avoided": 0,
+        "server_cpu_us_per_object": 0.0,
+        "server_memory_peak_bytes": 0,
+        "client_cpu_s": 8.002268,
+        "client_memory_peak_bytes": 18886656,
+        "cache_file_allocated_bytes": 0,
+        "origin_cpu_s": 3.266232,
+        "origin_memory_peak_bytes": 30998528,
+        "path_component_peak_sum_upper_bound_bytes": 0
+      },
+      "range_objects_s": [
+        836.529949124672,
+        836.529949124672
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "recent_replay_256k_c8/grpc_adapter": {
+      "n": 1,
+      "medians": {
+        "objects_s": 1981.334146337912,
+        "payload_mib_s": 495.333536584478,
+        "p50_ms": 3.463,
+        "p95_ms": 8.717449999999998,
+        "p99_ms": 11.370939999999997,
+        "p999_ms": 14.776359,
+        "hit_ratio": 0.9983853062872137,
+        "byte_hit_ratio": 0.9983853062872137,
+        "origins": 32,
+        "origin_bytes": 8388608,
+        "origin_bytes_avoided": 5186781184,
+        "server_cpu_us_per_object": 548.4364718942376,
+        "server_memory_peak_bytes": 101756928,
+        "client_cpu_s": 8.568827,
+        "client_memory_peak_bytes": 49451008,
+        "cache_file_allocated_bytes": 0,
+        "adapter_cpu_s": 6.508835,
+        "grpc_server_cpu_s": 4.360079,
+        "adapter_memory_peak_bytes": 53297152,
+        "grpc_server_memory_peak_bytes": 48459776,
+        "origin_cpu_s": 0.023287,
+        "origin_memory_peak_bytes": 27688960,
+        "path_component_peak_sum_upper_bound_bytes": 101756928
+      },
+      "range_objects_s": [
+        1981.334146337912,
+        1981.334146337912
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "recent_replay_256k_c8/nginx": {
+      "n": 1,
+      "medians": {
+        "objects_s": 2333.6877034495924,
+        "payload_mib_s": 583.4219258623981,
+        "p50_ms": 2.73,
+        "p95_ms": 8.141,
+        "p99_ms": 11.211659999999993,
+        "p999_ms": 16.549658,
+        "hit_ratio": 0.998629374223669,
+        "byte_hit_ratio": 0.998629374223669,
+        "origins": 32,
+        "origin_bytes": 8388608,
+        "origin_bytes_avoided": 6111887360,
+        "server_cpu_us_per_object": 195.75247355120572,
+        "server_memory_peak_bytes": 25477120,
+        "client_cpu_s": 9.967572,
+        "client_memory_peak_bytes": 57466880,
+        "cache_file_allocated_bytes": 17043456,
+        "nginx_cpu_s": 4.570233,
+        "origin_cpu_s": 0.02411,
+        "origin_memory_peak_bytes": 29175808,
+        "path_component_peak_sum_upper_bound_bytes": 25477120
+      },
+      "range_objects_s": [
+        2333.6877034495924,
+        2333.6877034495924
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "repeated_1m_c8/grpc_adapter": {
+      "n": 1,
+      "medians": {
+        "objects_s": 542.4398457835985,
+        "payload_mib_s": 542.4398457835985,
+        "p50_ms": 14.061,
+        "p95_ms": 23.9602,
+        "p99_ms": 29.06264,
+        "hit_ratio": 1.0,
+        "byte_hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "origin_bytes_avoided": 5692719104,
+        "server_cpu_us_per_object": 1744.4820408915086,
+        "server_memory_peak_bytes": 242462720,
+        "client_cpu_s": 9.069461,
+        "client_memory_peak_bytes": 80379904,
+        "cache_file_allocated_bytes": 0,
+        "adapter_cpu_s": 4.992095,
+        "grpc_server_cpu_s": 4.478698,
+        "adapter_memory_peak_bytes": 133165056,
+        "grpc_server_memory_peak_bytes": 109297664,
+        "origin_cpu_s": 0.00883,
+        "origin_memory_peak_bytes": 30998528,
+        "path_component_peak_sum_upper_bound_bytes": 242462720
+      },
+      "range_objects_s": [
+        542.4398457835985,
+        542.4398457835985
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "repeated_1m_c8/nginx": {
+      "n": 1,
+      "medians": {
+        "objects_s": 663.8471475552872,
+        "payload_mib_s": 663.8471475552872,
+        "p50_ms": 11.554,
+        "p95_ms": 21.503,
+        "p99_ms": 26.165639999999996,
+        "hit_ratio": 1.0,
+        "byte_hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "origin_bytes_avoided": 6967787520,
+        "server_cpu_us_per_object": 540.040331075997,
+        "server_memory_peak_bytes": 44687360,
+        "client_cpu_s": 10.003122,
+        "client_memory_peak_bytes": 141443072,
+        "cache_file_allocated_bytes": 33689600,
+        "nginx_cpu_s": 3.588568,
+        "origin_cpu_s": 0.00915,
+        "origin_memory_peak_bytes": 30998528,
+        "path_component_peak_sum_upper_bound_bytes": 44687360
+      },
+      "range_objects_s": [
+        663.8471475552872,
+        663.8471475552872
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "repeated_256k_c8/grpc_adapter": {
+      "n": 1,
+      "medians": {
+        "objects_s": 2017.7438415975141,
+        "payload_mib_s": 504.43596039937853,
+        "p50_ms": 3.359,
+        "p95_ms": 8.277899999999999,
+        "p99_ms": 10.96836,
+        "p999_ms": 14.968358,
+        "hit_ratio": 1.0,
+        "byte_hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "origin_bytes_avoided": 5290852352,
+        "server_cpu_us_per_object": 548.5818758360997,
+        "server_memory_peak_bytes": 105316352,
+        "client_cpu_s": 8.519966,
+        "client_memory_peak_bytes": 44699648,
+        "cache_file_allocated_bytes": 0,
+        "adapter_cpu_s": 6.640802,
+        "grpc_server_cpu_s": 4.431226,
+        "adapter_memory_peak_bytes": 54644736,
+        "grpc_server_memory_peak_bytes": 50671616,
+        "origin_cpu_s": 0.007699,
+        "origin_memory_peak_bytes": 24158208,
+        "path_component_peak_sum_upper_bound_bytes": 105316352
+      },
+      "range_objects_s": [
+        2017.7438415975141,
+        2017.7438415975141
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    },
+    "repeated_256k_c8/nginx": {
+      "n": 1,
+      "medians": {
+        "objects_s": 2368.152930405202,
+        "payload_mib_s": 592.0382326013005,
+        "p50_ms": 2.745,
+        "p95_ms": 8.100099999999998,
+        "p99_ms": 11.04433,
+        "p999_ms": 15.01211,
+        "hit_ratio": 1.0,
+        "byte_hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "origin_bytes_avoided": 6210191360,
+        "server_cpu_us_per_object": 197.81215702828197,
+        "server_memory_peak_bytes": 33374208,
+        "client_cpu_s": 10.312631,
+        "client_memory_peak_bytes": 53874688,
+        "cache_file_allocated_bytes": 17043456,
+        "nginx_cpu_s": 4.68617,
+        "origin_cpu_s": 0.009215,
+        "origin_memory_peak_bytes": 24125440,
+        "path_component_peak_sum_upper_bound_bytes": 33374208
+      },
+      "range_objects_s": [
+        2368.152930405202,
+        2368.152930405202
+      ],
+      "bootstrap95_median_objects_s": null,
+      "repetitions": [
+        "r0"
+      ],
+      "errors": 0
+    }
+  },
+  "failed_runs": [],
+  "method": "Per-run p50/p95/p99/p999 are not pooled. Group medians use run values; 95% intervals are 10,000 seeded bootstrap resamples of run medians when n>=5. Small-n bootstrap intervals are descriptive, not a guarantee of coverage."
+}

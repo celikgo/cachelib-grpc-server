@@ -1,0 +1,67 @@
+{
+  "args": {
+    "backend": "valkey",
+    "batch_kind": "multiget",
+    "batch_size": 16,
+    "command": "run",
+    "concurrency": 1,
+    "host": "clinv-valkey-a582c064",
+    "mode": "hit",
+    "objects": 2,
+    "origin_ms": 0.0,
+    "pattern": "uniform",
+    "port": 6379,
+    "requests": 20,
+    "run_id": "near_limit-0",
+    "seed": 20260923,
+    "value_bytes": 4193000,
+    "warmup": 200
+  },
+  "backend": "valkey",
+  "byte_hits": 83860000,
+  "definitions": {
+    "operation": "one object GET plus optional origin delay and cache SET on miss; mixed includes SET; bypass models only origin delay",
+    "origin_bytes_avoided": "hits times fixed object size, relative to fetching every request",
+    "payload_bytes": "bytes in successful cache GET responses"
+  },
+  "elapsed_s": 0.059012332996644545,
+  "error_examples": [],
+  "errors": 0,
+  "latency_ms": {
+    "p50": 2.7823124999999997,
+    "p95": 3.01838785,
+    "p99": 3.0844447699999997
+  },
+  "measured_operations": 20,
+  "object_hits": 20,
+  "origin_bytes": 0,
+  "origin_bytes_avoided": 83860000,
+  "origin_requests": 0,
+  "payload_mib_s": 1355.2273586332458,
+  "preloaded_objects": 2,
+  "read_operations": 20,
+  "schema": 1,
+  "stats_after": {
+    "evicted_keys": 0,
+    "keyspace_hits": 42,
+    "keyspace_misses": 3,
+    "redis_version": "7.2.4",
+    "total_commands_processed": 60,
+    "used_memory": 13647848,
+    "used_memory_rss": 27250688,
+    "valkey_version": "8.1.10"
+  },
+  "stats_before": {
+    "evicted_keys": 0,
+    "keyspace_hits": 22,
+    "keyspace_misses": 3,
+    "redis_version": "7.2.4",
+    "total_commands_processed": 39,
+    "used_memory": 13644008,
+    "used_memory_rss": 27250688,
+    "valkey_version": "8.1.10"
+  },
+  "successful_ops_s": 338.912206726977,
+  "warmup_operations": 20,
+  "write_operations": 0
+}

@@ -165,6 +165,8 @@ TEST_F(NvmHybridConfigTest, NvmDisabledLeavesFlashCountersZero) {
   EXPECT_EQ(stats.nvmUsed, 0);
   EXPECT_EQ(stats.nvmHitCount, 0);
   EXPECT_EQ(stats.nvmMissCount, 0);
+  EXPECT_EQ(stats.nvmDeviceBytesRead, 0);
+  EXPECT_EQ(stats.nvmDeviceBytesWritten, 0);
   EXPECT_GT(stats.totalSize, 0);
 
   manager.shutdown();
@@ -461,6 +463,13 @@ TEST_F(NvmHybridEvictionTest, EvictedKeyIsStillServedAfterLeavingDram) {
   // is physically incapable of still holding everything that was written.
   EXPECT_LT(stats.itemCount, static_cast<int64_t>(kFillCount));
 
+  ASSERT_TRUE(pollUntil(
+      [&]() { return cacheManager_->getStats().nvmUsed > 0; }, 15000,
+      "Navy device bytes written to increase after DRAM eviction"));
+  const auto nvmCounters = cacheManager_->getStats();
+  EXPECT_EQ(nvmCounters.nvmDeviceBytesWritten, nvmCounters.nvmUsed);
+  const int64_t flashHitsBefore = cacheManager_->getStats().nvmHitCount;
+
   // Admission to flash is asynchronous: the item is copied out of DRAM when it
   // is evicted, but the Navy insert completes on a writer thread.
   std::string fetched;
@@ -478,6 +487,8 @@ TEST_F(NvmHybridEvictionTest, EvictedKeyIsStillServedAfterLeavingDram) {
 
   EXPECT_EQ(fetched.size(), probeValue.size());
   EXPECT_TRUE(fetched == probeValue) << "value changed on the flash round trip";
+  EXPECT_GT(cacheManager_->getStats().nvmHitCount, flashHitsBefore)
+      << "the flash-resident value was read, but Navy's hit counter did not advance";
 }
 
 // The three places where DRAM-only bookkeeping leaks into the wire contract.

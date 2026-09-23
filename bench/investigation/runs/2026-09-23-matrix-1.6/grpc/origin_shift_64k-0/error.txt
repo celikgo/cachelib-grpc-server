@@ -1,0 +1,11 @@
+client failed: Traceback (most recent call last):
+  File "/work/client.py", line 296, in <module>
+    main()
+  File "/work/client.py", line 289, in main
+    result = (verify(b) if args.command == "verify" else
+              ^^^^^^^^^
+  File "/work/client.py", line 94, in verify
+    assert b.get(key) is None, "TTL expiry"
+           ^^^^^^^^^^^^^^^^^^
+AssertionError: TTL expiry
+

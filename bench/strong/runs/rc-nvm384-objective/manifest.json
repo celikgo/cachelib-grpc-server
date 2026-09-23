@@ -1,0 +1,88 @@
+{
+  "utc": "2026-09-23T15:49:03.097504+00:00",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "host_arch": "arm64",
+  "docker": {
+    "Architecture": "aarch64",
+    "CgroupVersion": "2",
+    "Driver": "overlay2",
+    "KernelVersion": "6.12.76-linuxkit",
+    "MemTotal": 29381500928,
+    "NCPU": 8,
+    "OperatingSystem": "Docker Desktop",
+    "ServerVersion": "29.4.3"
+  },
+  "git_commit": "a4237c29f00aa819ad28d5ea94d3056026809bdb",
+  "git_status": " M .dockerignore\n M .github/workflows/ci.yml\n M .github/workflows/release.yml\n M .gitignore\n M BENCHMARKS.md\n M CHANGELOG.md\n M CONTRIBUTING.md\n M CacheManager.cc\n M CacheManager.h\n M CacheServiceImpl.cc\n M Dockerfile\n M MetricsServer.cc\n M README.md\n M patches/README.md\n M proto/cache.proto\n M tests/CacheServiceTest.cc\n M tests/NvmHybridTest.cc\n?? bench/investigation/\n?? bench/strong/\n?? patches/0003-xz-download-url.patch\n?? scripts/\n",
+  "runtime_source_sha256": "e373c4966f00acfa0f086ceaa2a4794ea70b66520677de860c1d78746ea6af2d",
+  "configuration": {
+    "grpc_image": "cachelib-candidate:1.8.0",
+    "engines": "grpc_nvm",
+    "cases": "origin_uniform_64k_5ms",
+    "reps": 5,
+    "seconds": 60,
+    "warmup": 15,
+    "cache_mb": 96,
+    "memory_mb": 384,
+    "flash_mb": 512,
+    "output": "bench/strong/runs/rc-nvm384-objective"
+  },
+  "images": {
+    "grpc_nvm": {
+      "id": "sha256:ddf4a50f1612cc30bd20606f2018923707979141ddbbd609ddce70ac267de4a0",
+      "repo_digests": [],
+      "architecture": "arm64",
+      "labels": {
+        "io.celikgo.cachelib.upstream.repository": "https://github.com/facebook/CacheLib.git",
+        "io.celikgo.cachelib.upstream.revision": "2aa2afbe97deadfb00f15260b26b566354c57a78",
+        "org.opencontainers.image.description": "A standalone gRPC server for Meta's CacheLib: 19 RPCs over a Redis-style key/value surface, on a hybrid DRAM+SSD cache.",
+        "org.opencontainers.image.documentation": "https://github.com/celikgo/cachelib-grpc-server/blob/main/README.md",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.revision": "a4237c29f00aa819ad28d5ea94d3056026809bdb",
+        "org.opencontainers.image.source": "https://github.com/celikgo/cachelib-grpc-server",
+        "org.opencontainers.image.title": "cachelib-grpc-server",
+        "org.opencontainers.image.version": "1.8.0"
+      }
+    }
+  },
+  "go_client_image": {
+    "id": "sha256:4ca7afa8b980f691038c59514ac21594c61a4e4eb671e45ec7ad148eae6c8794",
+    "repo_digests": [],
+    "architecture": "arm64",
+    "labels": null
+  },
+  "correctness_client_image": {
+    "id": "sha256:46aeb47004b56e9378b80053264ffcc94fb73f1dd53e91139cab08ca534f9021",
+    "repo_digests": [],
+    "architecture": "arm64",
+    "labels": null
+  },
+  "schedule": [
+    [
+      "origin_uniform_64k_5ms",
+      0,
+      "grpc_nvm"
+    ],
+    [
+      "origin_uniform_64k_5ms",
+      1,
+      "grpc_nvm"
+    ],
+    [
+      "origin_uniform_64k_5ms",
+      2,
+      "grpc_nvm"
+    ],
+    [
+      "origin_uniform_64k_5ms",
+      3,
+      "grpc_nvm"
+    ],
+    [
+      "origin_uniform_64k_5ms",
+      4,
+      "grpc_nvm"
+    ]
+  ],
+  "host_ports_published": false
+}

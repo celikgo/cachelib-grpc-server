@@ -1,0 +1,9 @@
+{
+  "input_directories": [
+    "bench/investigation/runs/2026-09-23-matrix-1.6",
+    "bench/investigation/runs/2026-09-23-matrix-fixed-1.6",
+    "bench/investigation/runs/2026-09-23-batch-fixed",
+    "bench/investigation/runs/2026-09-23-extstore-proof"
+  ],
+  "selection_rule": "later engine/case result replaces earlier; raw inputs preserved"
+}

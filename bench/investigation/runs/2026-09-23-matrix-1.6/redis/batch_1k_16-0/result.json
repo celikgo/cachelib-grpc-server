@@ -1,0 +1,38 @@
+{
+  "args": {
+    "backend": "redis",
+    "batch_kind": "multiget",
+    "batch_size": 16,
+    "command": "batch",
+    "concurrency": 1,
+    "host": "clinv-redis-0df7bd7d",
+    "mode": "hit",
+    "objects": 1000,
+    "origin_ms": 0.0,
+    "pattern": "uniform",
+    "port": 6379,
+    "requests": 3200,
+    "run_id": "batch_1k_16-0",
+    "seed": 20260923,
+    "value_bytes": 1024,
+    "warmup": 200
+  },
+  "backend": "redis",
+  "batch_latency_ms": {
+    "p50": 0.12608350000000002,
+    "p95": 0.16198395,
+    "p99": 0.19020657999999996
+  },
+  "batches": 200,
+  "definitions": {
+    "batch": "one network call or pipelined group",
+    "operation": "one object GET"
+  },
+  "elapsed_s": 0.024723499998799525,
+  "error_examples": [],
+  "errors": 0,
+  "operations": 3200,
+  "payload_mib_s": 126.39796145981505,
+  "schema": 1,
+  "successful_ops_s": 129431.51253485061
+}

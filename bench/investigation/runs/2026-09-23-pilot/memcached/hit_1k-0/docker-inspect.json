@@ -1,0 +1,214 @@
+[
+    {
+        "Id": "80cd2ec7965cdee0d3de46af84efcf1dcdba7d6d892178401bdd4fa7d3876c48",
+        "Created": "2026-09-23T10:40:30.002462925Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "-m",
+            "96",
+            "-t",
+            "4",
+            "-I",
+            "5m",
+            "-U",
+            "0"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 37930,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-23T10:40:30.029133759Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:1dd5bd4099e3cca31288437e2dd63d71878251e9a528afa6064a7fc061fd0d4b",
+        "ResolvConfPath": "/var/lib/docker/containers/80cd2ec7965cdee0d3de46af84efcf1dcdba7d6d892178401bdd4fa7d3876c48/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/80cd2ec7965cdee0d3de46af84efcf1dcdba7d6d892178401bdd4fa7d3876c48/hostname",
+        "HostsPath": "/var/lib/docker/containers/80cd2ec7965cdee0d3de46af84efcf1dcdba7d6d892178401bdd4fa7d3876c48/hosts",
+        "LogPath": "/var/lib/docker/containers/80cd2ec7965cdee0d3de46af84efcf1dcdba7d6d892178401bdd4fa7d3876c48/80cd2ec7965cdee0d3de46af84efcf1dcdba7d6d892178401bdd4fa7d3876c48-json.log",
+        "Name": "/clinv-memcached-098cd2b0",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "clinv-4e5a895236a6",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 805306368,
+            "NanoCpus": 4000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 805306368,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "80cd2ec7965cdee0d3de46af84efcf1dcdba7d6d892178401bdd4fa7d3876c48",
+                "LowerDir": "/var/lib/docker/overlay2/abad1cdb79d599accf8ba4537f23b4bbdb4fdfb922bc2c949d4c40b138b8412b-init/diff:/var/lib/docker/overlay2/f4399b7818cc7bbeeb01c2300a898e75aeb2824fd231b5ed251b4da9224679d5/diff:/var/lib/docker/overlay2/e1c8a38630ba95b3de9157b7d8a4150d4503fcf53985684cfd8c0f235ed79a87/diff:/var/lib/docker/overlay2/fff61bd587c809d24ed750102d053f0ea35bcf990701d0972fcd7cb8efcfde4f/diff:/var/lib/docker/overlay2/7cd50791d30407a088357437c9e442df73666548b7f4dbf5b83e1c074e55a599/diff:/var/lib/docker/overlay2/f3235832351801633d2c631f6a68de92c487231afd64acf9d3d43a8036f64192/diff:/var/lib/docker/overlay2/aeb245afb49b48197de2a50ce6c401f5428f14bead6126645898d3c4accd3809/diff",
+                "MergedDir": "/var/lib/docker/overlay2/abad1cdb79d599accf8ba4537f23b4bbdb4fdfb922bc2c949d4c40b138b8412b/merged",
+                "UpperDir": "/var/lib/docker/overlay2/abad1cdb79d599accf8ba4537f23b4bbdb4fdfb922bc2c949d4c40b138b8412b/diff",
+                "WorkDir": "/var/lib/docker/overlay2/abad1cdb79d599accf8ba4537f23b4bbdb4fdfb922bc2c949d4c40b138b8412b/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [],
+        "Config": {
+            "Hostname": "80cd2ec7965c",
+            "Domainname": "",
+            "User": "memcache",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "11211/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "MEMCACHED_VERSION=1.6.45",
+                "MEMCACHED_URL=https://memcached.org/files/memcached-1.6.45.tar.gz",
+                "MEMCACHED_SHA1=45038980ea7045a548b9b5b5125ef7116312a768"
+            ],
+            "Cmd": [
+                "-m",
+                "96",
+                "-t",
+                "4",
+                "-I",
+                "5m",
+                "-U",
+                "0"
+            ],
+            "Image": "memcached:1.6-alpine",
+            "Volumes": null,
+            "WorkingDir": "/",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "Labels": {},
+            "StopTimeout": 1
+        },
+        "NetworkSettings": {
+            "SandboxID": "5e4ce3548f3f418493b7e2949a4f3271049512497682846e42fcef2b277e3aa2",
+            "SandboxKey": "/var/run/docker/netns/5e4ce3548f3f",
+            "Ports": {
+                "11211/tcp": null
+            },
+            "Networks": {
+                "clinv-4e5a895236a6": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "a561250f9c09a004542bdf6d86f3e461148d0a36ab96f6b139ec71f5e7f8b858",
+                    "EndpointID": "0eb8ce05743604700cad77d6a0bf5c8c021bb7f1a27be4c760bd44e857bb4ba0",
+                    "Gateway": "",
+                    "IPAddress": "172.18.0.2",
+                    "MacAddress": "96:cb:29:68:e0:30",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "clinv-memcached-098cd2b0",
+                        "80cd2ec7965c"
+                    ]
+                }
+            }
+        }
+    }
+]

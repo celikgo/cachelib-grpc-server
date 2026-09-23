@@ -1,0 +1,22 @@
+[
+  "docker",
+  "run",
+  "-d",
+  "--name",
+  "cm-origin-c89b3636",
+  "--network",
+  "cm-c89b3636",
+  "--network-alias",
+  "origin",
+  "--cpus",
+  "2",
+  "--memory",
+  "512m",
+  "--memory-swap",
+  "512m",
+  "--entrypoint",
+  "python",
+  "cachelib-investigation-client:local",
+  "/work/http_service.py",
+  "origin"
+]

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="269" viewBox="0 0 1100 269">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-family="sans-serif" font-size="18">Successful objects per second</text>
+<text x="400" y="52" font-family="sans-serif" font-size="12">objects/s; median of independent runs</text>
+<text x="18" y="82" font-family="monospace" font-size="12">onepass_256k_c8 / grpc_adapter</text>
+<rect x="400" y="68" width="150" height="18" fill="#1d6fa5"/>
+<text x="558" y="82" font-family="sans-serif" font-size="12">658.7</text>
+<text x="18" y="109" font-family="monospace" font-size="12">onepass_256k_c8 / nginx</text>
+<rect x="400" y="95" width="120" height="18" fill="#367b45"/>
+<text x="528" y="109" font-family="sans-serif" font-size="12">530.8</text>
+<text x="18" y="136" font-family="monospace" font-size="12">onepass_256k_c8 / origin_direct</text>
+<rect x="400" y="122" width="183" height="18" fill="#666"/>
+<text x="591" y="136" font-family="sans-serif" font-size="12">803.9</text>
+<text x="18" y="163" font-family="monospace" font-size="12">recent_replay_256k_c8 / grpc_adapter</text>
+<rect x="400" y="149" width="450" height="18" fill="#1d6fa5"/>
+<text x="858" y="163" font-family="sans-serif" font-size="12">1,976.8</text>
+<text x="18" y="190" font-family="monospace" font-size="12">recent_replay_256k_c8 / nginx</text>
+<rect x="400" y="176" width="550" height="18" fill="#367b45"/>
+<text x="958" y="190" font-family="sans-serif" font-size="12">2,412.8</text>
+<text x="18" y="217" font-family="monospace" font-size="12">repeated_1m_c8 / grpc_adapter</text>
+<rect x="400" y="203" width="137" height="18" fill="#1d6fa5"/>
+<text x="545" y="217" font-family="sans-serif" font-size="12">601.6</text>
+<text x="18" y="244" font-family="monospace" font-size="12">repeated_1m_c8 / nginx</text>
+<rect x="400" y="230" width="171" height="18" fill="#367b45"/>
+<text x="579" y="244" font-family="sans-serif" font-size="12">752.0</text>
+</svg>

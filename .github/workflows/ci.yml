@@ -52,7 +52,9 @@ jobs:
       # committed measurement. This fails the build if the markdown has drifted
       # from it, in about a second, on every push.
       - name: Benchmark tables match the committed measurement
-        run: python3 bench/render.py --check
+        run: |
+          python3 bench/render.py --check
+          python3 bench/strong/render_report_tables.py --check
 
       - uses: ludeeus/action-shellcheck@master
         with:

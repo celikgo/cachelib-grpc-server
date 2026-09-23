@@ -576,15 +576,17 @@ message StatsResponse {
   int64 expired_count = 11;
 
   // --- NVM (SSD Cache) Stats ---
-  // Whether NVM cache is enabled
+  // Requested by configuration, not proof that a Navy file was opened. With
+  // an empty NVM path this can be true while the server remains DRAM-only.
   bool nvm_enabled = 12;
-  // NVM cache size in bytes
+  // Configured NVM file size in bytes, not occupied flash bytes
   int64 nvm_size = 13;
-  // NVM cache used in bytes
+  // Legacy name: cumulative Navy device bytes written since startup, NOT
+  // occupied NVM capacity. This field keeps its wire number for compatibility.
   int64 nvm_used = 14;
-  // NVM hit count
+  // Successful Navy lookups (navy_succ_lookups), including page-cached reads
   int64 nvm_hit_count = 15;
-  // NVM miss count
+  // Navy lookups minus successful Navy lookups
   int64 nvm_miss_count = 16;
 
   // --- Server Stats ---
@@ -596,6 +598,12 @@ message StatsResponse {
   // --- Detailed Stats ---
   // NOT IMPLEMENTED. Always empty; the server never populates it.
   repeated PoolStats pool_stats = 19;
+  // Cumulative bytes read by Navy's device abstraction since startup.
+  // A file-backed device may be served from the OS page cache.
+  int64 nvm_device_bytes_read = 20;
+  // Cumulative bytes written by Navy's device abstraction since startup.
+  // This is the correctly named equivalent of legacy nvm_used.
+  int64 nvm_device_bytes_written = 21;
 }
 
 // PingRequest is an empty health check request.

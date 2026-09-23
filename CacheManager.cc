@@ -932,10 +932,18 @@ CacheStats CacheManager::getStats() const {
       auto bytesWrittenIt = nvmStats.find("navy_device_bytes_written");
       if (bytesWrittenIt != nvmStats.end()) {
         stats.nvmUsed = static_cast<int64_t>(bytesWrittenIt->second);
+        stats.nvmDeviceBytesWritten = stats.nvmUsed;
+      }
+      auto bytesReadIt = nvmStats.find("navy_device_bytes_read");
+      if (bytesReadIt != nvmStats.end()) {
+        stats.nvmDeviceBytesRead = static_cast<int64_t>(bytesReadIt->second);
       }
 
-      auto nvmGetsIt = nvmStats.find("navy_gets");
-      auto nvmHitsIt = nvmStats.find("navy_hits");
+      // EnginePair exports these names in the pinned CacheLib revision.
+      // The old navy_gets/navy_hits names do not exist and silently reported
+      // zero flash hits and misses even when Navy served correct values.
+      auto nvmGetsIt = nvmStats.find("navy_lookups");
+      auto nvmHitsIt = nvmStats.find("navy_succ_lookups");
       if (nvmGetsIt != nvmStats.end()) {
         int64_t nvmGets = static_cast<int64_t>(nvmGetsIt->second);
         if (nvmHitsIt != nvmStats.end()) {

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-family="sans-serif" font-size="18">Object hit ratio</text>
+<text x="400" y="52" font-family="sans-serif" font-size="12">fraction; median of independent runs</text>
+<text x="18" y="82" font-family="monospace" font-size="12">cold_origin_uniform_64k_5ms / grpc</text>
+<rect x="400" y="68" width="345" height="18" fill="#1d6fa5"/>
+<text x="753" y="82" font-family="sans-serif" font-size="12">0.6</text>
+<text x="18" y="109" font-family="monospace" font-size="12">cold_origin_uniform_64k_5ms / grpc_nvm</text>
+<rect x="400" y="95" width="540" height="18" fill="#158b8b"/>
+<text x="948" y="109" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="136" font-family="monospace" font-size="12">cold_origin_uniform_64k_5ms / memcached_extstore</text>
+<rect x="400" y="122" width="545" height="18" fill="#b59a1d"/>
+<text x="953" y="136" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="163" font-family="monospace" font-size="12">cold_origin_uniform_64k_5ms / redis</text>
+<rect x="400" y="149" width="310" height="18" fill="#b94a48"/>
+<text x="718" y="163" font-family="sans-serif" font-size="12">0.6</text>
+<text x="18" y="190" font-family="monospace" font-size="12">onepass_64k_5ms / grpc</text>
+<rect x="400" y="176" width="0" height="18" fill="#1d6fa5"/>
+<text x="408" y="190" font-family="sans-serif" font-size="12">0.0</text>
+<text x="18" y="217" font-family="monospace" font-size="12">onepass_64k_5ms / grpc_nvm</text>
+<rect x="400" y="203" width="0" height="18" fill="#158b8b"/>
+<text x="408" y="217" font-family="sans-serif" font-size="12">0.0</text>
+<text x="18" y="244" font-family="monospace" font-size="12">onepass_64k_5ms / memcached_extstore</text>
+<rect x="400" y="230" width="0" height="18" fill="#b59a1d"/>
+<text x="408" y="244" font-family="sans-serif" font-size="12">0.0</text>
+<text x="18" y="271" font-family="monospace" font-size="12">onepass_64k_5ms / redis</text>
+<rect x="400" y="257" width="0" height="18" fill="#b94a48"/>
+<text x="408" y="271" font-family="sans-serif" font-size="12">0.0</text>
+<text x="18" y="298" font-family="monospace" font-size="12">origin_near_64k_5ms / grpc</text>
+<rect x="400" y="284" width="519" height="18" fill="#1d6fa5"/>
+<text x="927" y="298" font-family="sans-serif" font-size="12">0.9</text>
+<text x="18" y="325" font-family="monospace" font-size="12">origin_near_64k_5ms / grpc_nvm</text>
+<rect x="400" y="311" width="550" height="18" fill="#158b8b"/>
+<text x="958" y="325" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="352" font-family="monospace" font-size="12">origin_near_64k_5ms / memcached_extstore</text>
+<rect x="400" y="338" width="550" height="18" fill="#b59a1d"/>
+<text x="958" y="352" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="379" font-family="monospace" font-size="12">origin_near_64k_5ms / redis</text>
+<rect x="400" y="365" width="471" height="18" fill="#b94a48"/>
+<text x="879" y="379" font-family="sans-serif" font-size="12">0.9</text>
+<text x="18" y="406" font-family="monospace" font-size="12">origin_shift_64k_5ms / grpc</text>
+<rect x="400" y="392" width="549" height="18" fill="#1d6fa5"/>
+<text x="957" y="406" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="433" font-family="monospace" font-size="12">origin_shift_64k_5ms / grpc_nvm</text>
+<rect x="400" y="419" width="549" height="18" fill="#158b8b"/>
+<text x="957" y="433" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="460" font-family="monospace" font-size="12">origin_shift_64k_5ms / memcached_extstore</text>
+<rect x="400" y="446" width="549" height="18" fill="#b59a1d"/>
+<text x="957" y="460" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="487" font-family="monospace" font-size="12">origin_shift_64k_5ms / redis</text>
+<rect x="400" y="473" width="549" height="18" fill="#b94a48"/>
+<text x="957" y="487" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="514" font-family="monospace" font-size="12">origin_skew_64k_5ms / grpc</text>
+<rect x="400" y="500" width="429" height="18" fill="#1d6fa5"/>
+<text x="837" y="514" font-family="sans-serif" font-size="12">0.8</text>
+<text x="18" y="541" font-family="monospace" font-size="12">origin_skew_64k_5ms / grpc_nvm</text>
+<rect x="400" y="527" width="550" height="18" fill="#158b8b"/>
+<text x="958" y="541" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="568" font-family="monospace" font-size="12">origin_skew_64k_5ms / memcached_extstore</text>
+<rect x="400" y="554" width="550" height="18" fill="#b59a1d"/>
+<text x="958" y="568" font-family="sans-serif" font-size="12">1.0</text>
+<text x="18" y="595" font-family="monospace" font-size="12">origin_skew_64k_5ms / redis</text>
+<rect x="400" y="581" width="417" height="18" fill="#b94a48"/>
+<text x="825" y="595" font-family="sans-serif" font-size="12">0.8</text>
+</svg>

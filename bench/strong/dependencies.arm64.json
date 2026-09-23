@@ -1,0 +1,22 @@
+{
+  "scope": "locally built arm64 release candidate",
+  "source_base_commit": "a4237c29f00aa819ad28d5ea94d3056026809bdb",
+  "runtime_source_sha256": "e373c4966f00acfa0f086ceaa2a4794ea70b66520677de860c1d78746ea6af2d",
+  "candidate_image_id": "sha256:ddf4a50f1612cc30bd20606f2018923707979141ddbbd609ddce70ac267de4a0",
+  "candidate_executable_sha256": "da20c751e007cbebd301a2625d3b4488f2349a9f1caea7b1f992f54af9c524cf",
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "cmake": "3.28.3",
+  "ninja": "1.11.1",
+  "build_type": "Release",
+  "upstream_git_revisions": {
+    "CacheLib": "2aa2afbe97deadfb00f15260b26b566354c57a78",
+    "grpc": "0ef13a7555dbaadd4633399242524129eef5e231",
+    "BoringSSL": "2ff4b968a7e0cfee66d9f151cb95635b43dc1d5b",
+    "fbthrift": "cfa1ba289e5e24a53461f3371d45795f363f5bb1",
+    "folly": "0e803db00e81e02bf3d3b4442b64d2462f493467",
+    "mvfst": "f681384e1865ba86aa125b035d12f15579d65426",
+    "wangle": "21a674ccdd9f65fd5594e550de032c4b5ae80951",
+    "fizz": "5e61cfbf0553f46faead9b6fb652fe4cdfbfd254"
+  },
+  "note": "These are observed local builder checkouts. Release runners rebuild from the tag and their own package indexes; compare the released executable before equating it to this candidate."
+}

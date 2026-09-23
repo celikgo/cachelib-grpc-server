@@ -1,0 +1,44 @@
+{
+  "args": {
+    "backend": "memcached",
+    "batch_kind": "multiget",
+    "batch_size": 16,
+    "command": "batch",
+    "concurrency": 1,
+    "host": "clinv-memcached-ba2acafd",
+    "mode": "hit",
+    "objects": 1000,
+    "origin_ms": 0.0,
+    "pattern": "uniform",
+    "port": 11211,
+    "requests": 3200,
+    "run_id": "batch_1k_16-0",
+    "seed": 20260923,
+    "value_bytes": 1024,
+    "warmup": 200
+  },
+  "backend": "memcached",
+  "batch_latency_ms": {
+    "p50": 0.0965415,
+    "p95": 0.12261104999999999,
+    "p99": 0.14624207999999989
+  },
+  "batches": 200,
+  "definitions": {
+    "batch": "one network call or pipelined group",
+    "operation": "one object GET"
+  },
+  "elapsed_s": 0.02038120799988974,
+  "error_examples": [
+    "missing or corrupt value",
+    "missing or corrupt value",
+    "missing or corrupt value",
+    "missing or corrupt value",
+    "missing or corrupt value"
+  ],
+  "errors": 200,
+  "operations": 3200,
+  "payload_mib_s": 153.32751621085984,
+  "schema": 1,
+  "successful_ops_s": 0.0
+}

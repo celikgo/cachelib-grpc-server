@@ -367,6 +367,8 @@ TEST_F(CacheServiceTest, Stats) {
   EXPECT_GE(response.set_count(), 10);
   EXPECT_GE(response.get_count(), 5);
   EXPECT_GE(response.hit_count(), 5);
+  EXPECT_EQ(response.nvm_device_bytes_read(), 0);
+  EXPECT_EQ(response.nvm_device_bytes_written(), 0);
   // Uptime is whole seconds since the cache was constructed, and this fixture
   // is milliseconds old, so the only correct expectation is a plausible
   // non-negative number. The original assertion was > 0, which could only pass

@@ -14,16 +14,18 @@ configuration, metrics, the container image, CI, and benchmarks.
 
 ## Building and testing
 
-The container build is the reference environment; it pins the whole dependency
-chain rather than trusting host packages.
+The container build is the reference environment. It pins CacheLib and gRPC
+revisions and verifies the BoringSSL and xz downloads; OS package point
+versions can still move.
 
 ```bash
 docker build -t cachelib-grpc-server .
 docker build --target tester -t cachelib-grpc-server:test .   # builds and runs unit tests
 ```
 
-CI runs exactly these on every pull request, plus a multi-arch build for
-`linux/amd64` and `linux/arm64`.
+Pull-request CI builds and runs both test binaries on `linux/amd64`. The
+release workflow repeats the full tests and a DRAM+flash runtime smoke on
+native `linux/amd64` and `linux/arm64` before publishing either architecture.
 
 ## Changing the proto
 
@@ -42,8 +44,9 @@ are generated from it and the container ships it. Therefore:
 
 ## Benchmarks
 
-If a change could plausibly affect performance, run the harness before and
-after and put both numbers in the pull request:
+If a change could plausibly affect performance, run the relevant harness
+before and after and put both numbers in the pull request. The historical
+1.6.0 harness is:
 
 ```bash
 ./bench/run.sh
@@ -54,6 +57,10 @@ State the hardware. Numbers without a stated environment are not useful. See
 [BENCHMARKS.md](BENCHMARKS.md) for the methodology this project holds itself to
 — repeated runs, medians, percentiles from raw samples, and an explicit note on
 where the measurement environment limits the result.
+
+The current-version comparative and media-object harnesses are documented in
+[bench/strong/README.md](bench/strong/README.md). Keep their raw run manifests
+and generated summaries separate from the historical 1.6.0 measurements.
 
 ## Style
 

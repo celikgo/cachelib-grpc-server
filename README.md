@@ -70,15 +70,28 @@ Full methodology and the reproducible harness: **[BENCHMARKS.md](BENCHMARKS.md)*
 | 400 | 38,320 req/s | 3.67 ms | 29.18 ms | 43.06 ms |
 <!-- END GENERATED: readme-sweep -->
 
-Throughput flattens at about concurrency 100; past that, extra concurrency buys
-almost nothing and costs a lot of tail latency. `Get` runs at
+In this historical 1.6.0 workload, throughput flattens at about concurrency
+100; past that, extra concurrency buys little throughput and costs tail
+latency. `Get` runs at
 <!-- BEGIN GENERATED: get-vs-ping -->91%<!-- END GENERATED: get-vs-ping -->
-of the throughput of `Ping` — an RPC that touches no cache at all — so at this
-scale the CacheLib lookup is effectively free and gRPC framing is the
-bottleneck.
+of the throughput of `Ping` — an RPC that touches no cache at all. Their
+similar throughputs do not isolate the cost of transport, protobuf
+serialization, copying, and cache lookup. This is not a Redis comparison.
 
-These are laptop-VM numbers, published because they are reproducible, not
-because they are a ceiling. Real Linux server hardware will do better.
+These are laptop-VM numbers for the older 1.6.0 image. They should not be
+extrapolated to dedicated Linux hardware or the 1.8.0 candidate. The
+[current comparative report](bench/strong/REPORT.md) and
+[earlier investigation](bench/investigation/REPORT.md) keep source versions,
+image identities, and environments separate. In the repeated 1 KiB,
+eight-connection 1.8.0 candidate test, Redis was faster in all five paired
+60-second repetitions; see the current report for the full workload and
+resource conditions.
+With a 128 MiB reusable set and only 96 MiB configured cache RAM, the
+verified Navy tier avoided origin misses in a simulated 5 ms origin test;
+Memcached extstore was faster on that flash-backed trace, and Redis was
+faster when allowed enough RAM to hold the set. The report also measures
+HTTP media-object delivery against NGINX and separates the Python adapter
+cost from the CacheLib service.
 
 ---
 
@@ -112,8 +125,10 @@ A few worth calling out:
   the semantic a fixed-window rate limiter actually needs.
 - **`CompareAndSwap`** carries `keep_ttl`, so optimistic-locking updates do not
   silently reset expiry.
-- **`Pipeline`** amortises per-RPC overhead across a stream — worth reaching for
-  given that transport, not the cache, is what limits throughput.
+- **`Pipeline`** keeps a bidirectional request/response stream open. The
+  server handles operations sequentially within each stream; compare it with
+  competitors' native pipelining under the same workload before choosing it
+  for throughput.
 - **`Scan`** walks CacheLib's hash table, so its cost tracks the *configured
   cache size*, not the number of keys stored — a scan of an almost-empty 1 GiB
   cache costs the same as a scan of a full one. It is a debugging and
@@ -170,7 +185,13 @@ docker run -d -p 50051:50051 \
 ```
 
 Reads and writes are unchanged; `Stats` reports the flash tier separately via
-`nvm_enabled`, `nvm_size`, `nvm_hit_count`, and `nvm_miss_count`.
+`nvm_enabled`, `nvm_size`, `nvm_hit_count`, `nvm_miss_count`,
+`nvm_device_bytes_read`, and `nvm_device_bytes_written`.
+`nvm_enabled` reflects the requested flag, not a verified open flash device.
+The legacy `nvm_used` field and `cachelib_nvm_used_bytes` metric count Navy
+device bytes written since startup; neither reports occupied SSD capacity.
+The new read/write counters are Navy file-device operations, which can be
+served by the OS page cache; they are not physical NAND telemetry.
 
 Two things behave differently once the tier is on, because CacheLib's iterator
 and its remove result only see DRAM:
@@ -208,9 +229,9 @@ See [`docker-compose.yml`](docker-compose.yml).
 
 ## Building from source
 
-The container build is the supported path, because it pins the whole
-dependency chain (gRPC, folly, fbthrift, CacheLib) rather than trusting
-whatever is on the host:
+The container build is the supported path. It pins CacheLib and gRPC to
+verified revisions and resolves CacheLib's remaining dependency chain through
+its `getdeps.py` manifests rather than trusting host libraries:
 
 ```bash
 docker build -t cachelib-grpc-server .
@@ -241,7 +262,7 @@ CacheManager.*        CacheLib allocator lifecycle, pools, NVM configuration
 CacheServiceImpl.*    the gRPC service implementation
 MetricsServer.*       Prometheus /metrics endpoint
 tests/                unit tests (gtest)
-patches/              two upstream CacheLib files modified for the build
+patches/              upstream CacheLib build fixes for the pinned revision
 bench/                reproducible benchmark harness
 ```
 

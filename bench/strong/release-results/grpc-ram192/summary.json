@@ -1,0 +1,63 @@
+{
+  "source": "bench/strong/runs/rc-grpc-ram192-objective",
+  "kind": "kv",
+  "groups": {
+    "origin_uniform_64k_5ms/grpc": {
+      "n": 5,
+      "medians": {
+        "objects_s": 22303.047311815124,
+        "payload_mib_s": 1393.9404569884452,
+        "p50_ms": 0.288875,
+        "p95_ms": 0.9055,
+        "p99_ms": 1.8082474799999995,
+        "p999_ms": 3.136476125,
+        "hit_ratio": 1.0,
+        "byte_hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "origin_bytes_avoided": 87701520384,
+        "origin_per_1000_gets": 0.0,
+        "server_cpu_us_per_object": 96.0738242395303,
+        "server_memory_current_bytes": 163028992,
+        "server_memory_peak_bytes": 170143744,
+        "client_cpu_s": 112.000429,
+        "client_memory_peak_bytes": 84963328,
+        "evictions_delta": 0,
+        "cache_item_count_after": 2050,
+        "cache_used_bytes_after": 146798272,
+        "nvm_hits_delta": 0,
+        "nvm_device_bytes_read_delta": 0,
+        "nvm_device_bytes_written_delta": 0,
+        "cgroup_io_rbytes_delta": 0,
+        "cgroup_io_wbytes_delta": 0,
+        "cgroup_io_rios_delta": 0,
+        "cgroup_io_wios_delta": 0,
+        "flash_hits": 0,
+        "inferred_dram_hits": 1338219,
+        "flash_hit_ratio": 0,
+        "inferred_dram_hit_ratio": 1.0,
+        "extstore_objects_read_delta": 0,
+        "extstore_bytes_written_delta": 0,
+        "flash_file_allocated_bytes": 0
+      },
+      "range_objects_s": [
+        22276.2976582333,
+        22438.502033221455
+      ],
+      "bootstrap95_median_objects_s": [
+        22276.2976582333,
+        22438.502033221455
+      ],
+      "repetitions": [
+        "r0",
+        "r1",
+        "r2",
+        "r3",
+        "r4"
+      ],
+      "errors": 0
+    }
+  },
+  "failed_runs": [],
+  "method": "Per-run p50/p95/p99/p999 are not pooled. Group medians use run values; 95% intervals are 10,000 seeded bootstrap resamples of run medians when n>=5. Small-n bootstrap intervals are descriptive, not a guarantee of coverage."
+}

@@ -1,0 +1,23 @@
+[
+  "run",
+  "-d",
+  "--name",
+  "clinv-redis-da291e71",
+  "--network",
+  "clinv-4e5a895236a6",
+  "--cpus",
+  "4",
+  "--memory",
+  "768m",
+  "--memory-swap",
+  "768m",
+  "redis:8.2-alpine",
+  "--save",
+  "",
+  "--appendonly",
+  "no",
+  "--maxmemory",
+  "100663296",
+  "--maxmemory-policy",
+  "allkeys-lru"
+]

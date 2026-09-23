@@ -1,0 +1,5 @@
+# Unified-diff context lines require a leading space, even when blank.
+patches/*.patch -whitespace
+# Preserve raw benchmark diagnostics, including upstream traceback spacing.
+bench/investigation/runs/**/error.txt -whitespace
+bench/strong/runs/**/error.txt -whitespace

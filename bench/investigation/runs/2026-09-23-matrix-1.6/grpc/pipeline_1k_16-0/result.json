@@ -1,0 +1,38 @@
+{
+  "args": {
+    "backend": "grpc",
+    "batch_kind": "pipeline",
+    "batch_size": 16,
+    "command": "batch",
+    "concurrency": 1,
+    "host": "clinv-grpc-b7569278",
+    "mode": "hit",
+    "objects": 1000,
+    "origin_ms": 0.0,
+    "pattern": "uniform",
+    "port": 50051,
+    "requests": 3200,
+    "run_id": "pipeline_1k_16-0",
+    "seed": 20260923,
+    "value_bytes": 1024,
+    "warmup": 200
+  },
+  "backend": "grpc",
+  "batch_latency_ms": {
+    "p50": 2.553208,
+    "p95": 2.9697465,
+    "p99": 3.3248149099999975
+  },
+  "batches": 200,
+  "definitions": {
+    "batch": "one network call or pipelined group",
+    "operation": "one object GET"
+  },
+  "elapsed_s": 0.5104462509989389,
+  "error_examples": [],
+  "errors": 0,
+  "operations": 3200,
+  "payload_mib_s": 6.12209413603176,
+  "schema": 1,
+  "successful_ops_s": 6269.024395296522
+}

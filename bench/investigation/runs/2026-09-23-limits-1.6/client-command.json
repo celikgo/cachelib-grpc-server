@@ -1,0 +1,16 @@
+[
+  "run",
+  "--rm",
+  "--network",
+  "cllimit-d788deb625",
+  "--cpus",
+  "2",
+  "cachelib-investigation-client:local",
+  "limits",
+  "--backend",
+  "grpc",
+  "--host",
+  "cllimit-server-d788deb625",
+  "--port",
+  "50051"
+]

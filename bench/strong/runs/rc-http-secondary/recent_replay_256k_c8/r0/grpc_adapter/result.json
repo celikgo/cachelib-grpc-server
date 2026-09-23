@@ -1,0 +1,38 @@
+{
+  "cache_status": {
+    "HIT": 58166,
+    "MISS": 32
+  },
+  "client_cpu_usage_usec": 26881252,
+  "client_memory_peak_bytes": 47620096,
+  "concurrency": 8,
+  "elapsed_s": 30.001433014,
+  "errors": 0,
+  "latency_samples": 58198,
+  "measure_seconds": 30,
+  "objects": 64,
+  "objects_s": 1939.8406727052748,
+  "origin_bytes_delta": 8388608,
+  "origin_requests_delta": 32,
+  "p50_ms": 3.552,
+  "p95_ms": 8.597,
+  "p999_ms": 16.424678999999998,
+  "p99_ms": 11.57303,
+  "pattern": "recent_replay",
+  "payload_mib_s": 484.9601681763187,
+  "size_bytes": 262144,
+  "successful_objects": 58198,
+  "warmup_errors": 0,
+  "warmup_seconds": 10,
+  "warmup_success": 15364,
+  "client_exit_code": 0,
+  "cgroup_sample_times_utc": [
+    "2026-09-23T17:04:45.573310+00:00",
+    "2026-09-23T17:05:15.335211+00:00"
+  ],
+  "path_containers": [
+    "cm-cache-75289d9c",
+    "cm-grpc_adapter-75289d9c"
+  ],
+  "origin_container": "cm-origin-e722d687"
+}

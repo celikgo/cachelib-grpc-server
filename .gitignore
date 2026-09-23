@@ -4,6 +4,11 @@
 # bench/results-summary.json and BENCHMARKS.md. Regenerate raw runs with
 # bench/run.sh and bench/sweep.sh.
 bench/results/
+# Keep raw JSON/cgroup measurements, but never add task-owned backing files.
+bench/strong/runs/**/flash/
+bench/strong/runs/**/cache-files/
+bench/investigation/runs/**/flash/
+bench/investigation/runs/**/nginx-cache/
 
 # ---- C++ / CMake build output ----------------------------------------------
 build/

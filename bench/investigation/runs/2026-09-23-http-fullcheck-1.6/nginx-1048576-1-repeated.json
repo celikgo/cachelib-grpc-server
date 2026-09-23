@@ -1,0 +1,24 @@
+{
+  "args": {
+    "concurrency": 1,
+    "host": "target",
+    "objects": 32,
+    "origin": "origin",
+    "pattern": "repeated",
+    "requests": 250,
+    "size": 1048576
+  },
+  "cache_status": {
+    "ORIGIN, HIT": 250
+  },
+  "elapsed_s": 0.19087666699999772,
+  "errors": 0,
+  "ops_s": 1309.7462562042901,
+  "origin_bytes_delta": 0,
+  "origin_requests_delta": 0,
+  "p50_ms": 0.7126874999999999,
+  "p95_ms": 0.8438911499999998,
+  "p99_ms": 0.94327442,
+  "payload_mib_s": 1309.7462562042901,
+  "requests": 250
+}

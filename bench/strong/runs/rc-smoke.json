@@ -1,0 +1,1 @@
+{"dram_evictions_delta": 3157, "navy_hits_delta": 5, "navy_read_bytes_delta": 348160, "navy_written_bytes_delta": 201326592, "objects_written": 4096, "physical_ssd_io_proven": false, "status": "passed", "ttl_expired": true, "value_bytes": 65536, "verified_flash_hits": 4}
