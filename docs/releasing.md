@@ -130,7 +130,7 @@ release_commit=$(git rev-parse HEAD)
 test -z "$(git status --porcelain)"
 git merge-base --is-ancestor "$build_source_commit" "$release_commit"
 git diff --exit-code "$build_source_commit" "$release_commit" -- \
-  Dockerfile .dockerignore CMakeLists.txt build.sh proto cmake patches '*.cc' '*.h'
+  Dockerfile .dockerignore CMakeLists.txt build.sh proto cmake 'patches/*.patch' '*.cc' '*.h'
 python3 - "$build_source_commit" "$release_commit" <<'PY'
 import hashlib
 import subprocess
