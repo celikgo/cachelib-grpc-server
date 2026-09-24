@@ -15,11 +15,11 @@
 
 # Build script for CacheLib gRPC Server
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CACHELIB_ROOT="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="${SCRIPT_DIR}/build"
+CACHELIB_PREFIX="${CACHELIB_PREFIX:-/opt/cachelib}"
 BUILD_TYPE="Release"
 BUILD_TESTS="OFF"
 PARALLEL_JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
@@ -35,8 +35,11 @@ usage() {
     echo "  -h, --help        Show this help message"
     echo ""
     echo "Prerequisites:"
-    echo "  - CacheLib must be built first (run ../contrib/build.sh)"
-    echo "  - gRPC and Protobuf must be installed"
+    echo "  - Linux with CacheLib headers/libraries installed at CACHELIB_PREFIX"
+    echo "    (default: /opt/cachelib); build the pinned dependency first"
+    echo "  - gRPC, Protobuf, folly and CacheLib's other dependencies installed"
+    echo "  - Set CMAKE_PREFIX_PATH to additional dependency prefixes"
+    echo "  - For a complete reproducible environment, use the Dockerfile"
     echo ""
     exit 0
 }
@@ -62,6 +65,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -j|--jobs)
+            [[ $# -ge 2 && "$2" =~ ^[1-9][0-9]*$ ]] || error "--jobs requires a positive integer"
             PARALLEL_JOBS="$2"
             shift 2
             ;;
@@ -84,9 +88,8 @@ log "Build tests: ${BUILD_TESTS}"
 log "Parallel jobs: ${PARALLEL_JOBS}"
 
 # Check if CacheLib is built
-CACHELIB_PREFIX="${CACHELIB_ROOT}/opt/cachelib"
 if [[ ! -d "${CACHELIB_PREFIX}" ]]; then
-    error "CacheLib not found at ${CACHELIB_PREFIX}. Please build CacheLib first using ../contrib/build.sh"
+    error "CacheLib not found at ${CACHELIB_PREFIX}. Set CACHELIB_PREFIX to its installed prefix, or build with Docker (see README.md)."
 fi
 
 # Check for gRPC
@@ -96,19 +99,18 @@ fi
 
 # Create build directory
 mkdir -p "${BUILD_DIR}"
-cd "${BUILD_DIR}"
 
 log "Configuring with CMake..."
 
-cmake \
+cmake -S "${SCRIPT_DIR}" -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
-    -DCMAKE_PREFIX_PATH="${CACHELIB_PREFIX};/usr/local" \
-    -DBUILD_TESTS="${BUILD_TESTS}" \
-    ..
+    -DCACHELIB_ROOT="${CACHELIB_PREFIX}" \
+    -DCMAKE_PREFIX_PATH="${CACHELIB_PREFIX};${CMAKE_PREFIX_PATH:-/usr/local}" \
+    -DBUILD_TESTS="${BUILD_TESTS}"
 
 log "Building..."
 
-cmake --build . --parallel "${PARALLEL_JOBS}"
+cmake --build "${BUILD_DIR}" --parallel "${PARALLEL_JOBS}"
 
 log "Build completed successfully!"
 log ""

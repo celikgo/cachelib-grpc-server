@@ -165,7 +165,7 @@ jobs:
             [ "$(docker inspect -f '{{.State.Health.Status}}' cache)" = healthy ] && break
             sleep 2
           done
-          docker inspect -f '{{.State.Health.Status}}' cache | grep -q healthy
+          docker inspect -f '{{.State.Health.Status}}' cache | grep -qx healthy
 
       - name: Exercise the RPC surface
         run: |
