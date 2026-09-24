@@ -68,6 +68,13 @@ authentication.
   It built and ran `cache_manager_test` only, so 15 of the 35 existing tests had
   never run in CI — including one, `CacheServiceTest.Stats`, that could not have
   passed.
+- The fuzz replay fixture now resets values before each input and seeds
+  adversarial matcher keys. Its at-most-four-key cache uses the supported
+  minimum 2^16 hash buckets instead of timing a 2^18-bucket mostly empty
+  traversal under sanitizers. The one-second parse/dispatch/`Scan` bound is
+  unchanged; fixture preparation is outside that timer. Correct protobuf
+  varint lengths restore the 255/256-byte boundary seeds, with regression
+  checks for valid decoding, input isolation, and matcher-key coverage.
 
 ### Changed
 - The hash table is sized from `--cache_size` instead of a hardcoded 2^25

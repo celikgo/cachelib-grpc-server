@@ -135,19 +135,29 @@ read from disk so the test cannot quietly replay zero inputs because a
 directory failed to copy into the image; set `CACHELIB_FUZZ_CORPUS` to a
 directory to replay extra files as well.
 
-The **discovery half** builds the same body with `-DCACHELIB_GRPC_LIBFUZZER`
-under clang, exposing `LLVMFuzzerTestOneInput`. Two caveats worth knowing
-before wiring it into CI:
+The allocator is reused, but each input begins with reset value state: the
+previous input's written key is removed and three fixed keys are restored,
+including a 255-byte adversarial matcher key and a binary key. At most four
+keys are present during a request. The fixture uses the supported minimum
+2^16 hash buckets; the earlier 2^18-bucket table made the sanitizer request
+timer largely measure empty-bucket traversal. The unchanged one-second bound
+covers protobuf parsing, operation dispatch, and the actual `Scan`, with
+fixture preparation outside the timer. This is a bounded fuzz regression
+fixture, not a production-size `Scan` performance claim.
 
-- The target is **stateful**. The cache is constructed once per process and
-  never flushed, because per-iteration construction would cost more than
-  everything else combined. libFuzzer assumes rough determinism; coverage
-  feedback varies between runs and a crasher may not reproduce from its file
-  alone. Reproduction means replaying the corpus in order.
-- `CacheServiceImpl::Pipeline`'s loop body is not reachable:
-  `grpc::ServerReaderWriter` has no public constructor, so the streaming
-  handler cannot be driven without standing up a real gRPC server, which is far
-  too slow per iteration.
+The 255/256-byte key seeds use valid protobuf varint length encodings.
+Additional regressions check that these seeds decode, that one input's values
+do not leak into the next, and that the seeded matcher keys remain covered.
+
+The **discovery half** builds the same body with `-DCACHELIB_GRPC_LIBFUZZER`
+under clang, exposing `LLVMFuzzerTestOneInput`. It uses the same reset-per-input
+value fixture. Allocator internals are still reused, so this does not promise
+bit-for-bit coverage determinism or exercise long multi-request histories.
+
+`CacheServiceImpl::Pipeline`'s loop body is not reachable:
+`grpc::ServerReaderWriter` has no public constructor, so the streaming
+handler cannot be driven without standing up a real gRPC server, which is far
+too slow per iteration.
 
 The highest-value thing the target reaches is the **glob matcher**. Every input
 is also used as a `Scan` pattern, because that pattern is attacker-controlled
