@@ -1,8 +1,12 @@
 # Current-version comparative benchmark harness
 
-The [fresh 1.8.0 release campaign](RELEASE-1.8.0.md) is separate from the
+Three campaigns live here and are never pooled: the
+[current landscape campaign](#current-landscape-campaign) (published 1.8.0
+image against the latest release of every comparable service), the
+[fresh 1.8.0 release campaign](RELEASE-1.8.0.md), and the
 [September 23 candidate qualification](REPORT.md). Raw evidence and generated
-results are retained for both campaigns.
+results are retained for each. Each campaign has its own module, output paths
+and renderer; a newer comparison never overwrites an older report.
 
 This is separate from `bench/results-summary.json` and the historical 1.6.0
 tables. Do not copy numbers between environments or silently replace either.
@@ -14,6 +18,119 @@ published ports, fresh service containers per run, and exact task-owned
 flash/cache directories. It never formats a device or prunes Docker state.
 The image arguments must identify the implementation being studied.
 
+
+## Current landscape campaign
+
+`landscape_campaign.py` measures the **published** `1.8.0` image against the
+latest official release of every comparable service, at the widest scenario
+coverage in this repository: **518 runs in 23 groups**, minimum 10 h 10 min of
+timed measurement. Measured per-run overhead — container start, readiness,
+correctness probe, preloading a multi-GiB working set, teardown — is about ten
+seconds, which puts the campaign at **roughly 12.5 hours**; the five `ssd-*`
+groups are about 5.5 hours of that. Reserve all eight Docker CPUs. Each run
+records its backing-file size in `flash-usage.json` and then deletes the file,
+so the host directory stays a few GiB rather than hundreds; allow about 20 GiB
+free. Docker Desktop's own virtual disk still grows as containers write to
+their tiers and does not shrink on its own.
+
+Four of those groups are the SSD+RAM tests the 96 MiB groups do not perform. A
+128 MiB working set in a 512 MiB file never makes a file tier reclaim space, and
+eight connections never make it serve concurrent reads, so the `ssd-*` groups
+drive **256 MiB DRAM plus a 4 GiB file** with:
+
+- `ssd-highvolume` — a 2 GiB working set of 64 KiB objects over 32 connections,
+  uniform and skewed, five 60-second repetitions.
+- `ssd-overcapacity` — a 6 GiB working set against the same 4 GiB file, with no
+  preload, so the tier evicts and reclaims continuously and no engine can avoid
+  every origin request.
+- `ssd-small-objects` — the same 2 GiB in 16 KiB objects: four times the items
+  and four times the index pressure.
+- `ssd-offered` — 10,000 scheduled arrivals/s over 64 connections, where
+  queueing delay and dropped arrivals become visible.
+- `ssd-sustained` — three 300-second runs, because reclaim and compaction need
+  time to reach steady state; a 60-second window can end before either engages.
+
+Each keeps DRAM-only CacheLib in the engine set as the reference for what the
+file tier is buying.
+
+Comparator pins (2026-09-24 latest releases): Redis 8.10.2, Valkey 9.1.2,
+Memcached 1.6.45, Dragonfly 2.0.0, Garnet 2.1.8, Kvrocks 2.17.0, NGINX 1.30.5.
+
+```bash
+# 1. Review the complete schedule without accessing Docker.
+python3 bench/strong/landscape_campaign.py --plan
+
+# 2. Pull the comparators and the published release image. Nothing is pulled
+#    during measurement; every tag is resolved to an immutable ID first.
+for image in redis:8.10.2-alpine valkey/valkey:9.1.2-alpine \
+             memcached:1.6.45-alpine nginx:1.30.5-alpine \
+             docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.0 \
+             ghcr.io/microsoft/garnet:2.1.8 apache/kvrocks:2.17.0 \
+             ghcr.io/celikgo/cachelib-grpc-server:latest; do docker pull "$image"; done
+
+# 3. Build the benchmark clients (the engine itself is the pulled image).
+docker build -f bench/strong/Dockerfile.client -t cachebench-go:landscape .
+docker build -f bench/investigation/Dockerfile.client -t cachelib-investigation-client:landscape .
+
+# 4. Run the campaign, then generate its report.
+python3 bench/strong/landscape_campaign.py \
+  --grpc-image ghcr.io/celikgo/cachelib-grpc-server:latest
+python3 bench/strong/render_landscape_report.py
+python3 bench/strong/render_landscape_report.py --check
+```
+
+To run only the SSD+RAM groups first — about five and a half hours for all five,
+or twenty minutes for the single high-volume case below — drive the
+harness directly and keep the output outside the campaign paths:
+
+```bash
+ssd_out=$(mktemp -d "${TMPDIR:-/tmp}/cachelib-ssd.XXXXXX")
+python3 bench/strong/run_strong.py \
+  --grpc-image ghcr.io/celikgo/cachelib-grpc-server:latest \
+  --go-client-image cachebench-go:landscape \
+  --correctness-client-image cachelib-investigation-client:landscape \
+  --engines grpc_nvm,memcached_extstore,garnet_storage,kvrocks,grpc \
+  --cases origin_uniform_64k_2gib_c32,origin_skew_64k_2gib_c32 \
+  --reps 5 --seconds 60 --warmup 30 \
+  --cache-mb 256 --memory-mb 1024 --flash-mb 4096 --discard-flash-files \
+  --output "$ssd_out/ssd-highvolume"
+python3 bench/strong/summarize.py --kind kv \
+  --input "$ssd_out/ssd-highvolume" --output "$ssd_out/ssd-highvolume-summary"
+```
+
+A campaign report is only rendered from a complete campaign, so a subset run
+like this produces CSV/JSON evidence, not a report.
+
+When the rendered report is committed, add
+`python3 bench/strong/render_landscape_report.py --check` to CI's benchmark-tables
+step alongside the other renderers, so this block cannot drift from its evidence
+either. It is deliberately absent until the report exists rather than present and
+skipping silently.
+
+Raw evidence defaults to `runs/landscape-1.8.0`; generated CSV/JSON/SVG to
+`landscape-1.8.0-results`; the report is `LANDSCAPE-1.8.0.md` plus the
+generated `landscape-headlines` block in the root README. `--resume` continues
+groups never started; an interrupted group requires investigation and a fresh
+output path.
+
+Engine-set membership follows measured configuration limits, recorded in
+`landscape_campaign.py` and repeated in the report:
+
+- **Dragonfly 2.0.0** exits unless `maxmemory` is at least 256 MiB per proactor
+  thread, so it cannot be configured at the 96 or 192 MiB budgets. The
+  `parity1g-hit` and `parity1g-origin` groups give every engine an equal 1 GiB
+  configured cache — the smallest budget Dragonfly accepts — so that it is
+  compared on equal terms rather than omitted.
+- **Dragonfly tiered storage** requires io_uring and aborts in
+  `InitTieredStorage()` under the epoll fallback Docker Desktop forces here, so
+  `dragonfly_tiered` is defined in the harness but not scheduled. CacheLib's
+  Navy tier runs with `--enable_io_uring=false` in these comparisons.
+- **Kvrocks** is a RocksDB-backed store rather than an evicting cache; its RAM
+  budget is the RocksDB block cache, and it is scheduled in the file-tier
+  groups where that comparison is the point.
+- **Garnet** publishes neither `used_memory` nor `keyspace_hits`, so its
+  cache-bytes and eviction columns stay empty; cgroup peak and per-object CPU
+  are measured the same way as every other engine.
 
 ## Fresh release campaign
 

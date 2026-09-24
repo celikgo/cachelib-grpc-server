@@ -32,6 +32,7 @@ type options struct {
 
 type backend struct {
 	kind           string
+	family         string
 	grpcConn       *grpc.ClientConn
 	grpcClient     pb.CacheServiceClient
 	stream         pb.CacheService_PipelineClient
@@ -41,9 +42,25 @@ type backend struct {
 	mem            *memcache.Client
 }
 
+// family maps an engine identifier to the wire protocol used to drive it. The
+// RESP engines share one client path; kind keeps the measured engine identity
+// in the recorded result.
+func family(kind string) string {
+	switch {
+	case strings.HasPrefix(kind, "grpc"):
+		return "grpc"
+	case strings.HasPrefix(kind, "memcached"):
+		return "memcached"
+	case kind == "redis" || kind == "valkey" || strings.HasPrefix(kind, "dragonfly") ||
+		strings.HasPrefix(kind, "garnet") || strings.HasPrefix(kind, "kvrocks"):
+		return "resp"
+	}
+	return ""
+}
+
 func newBackend(o options) (*backend, error) {
-	b := &backend{kind: o.backend}
-	switch o.backend {
+	b := &backend{kind: o.backend, family: family(o.backend)}
+	switch b.family {
 	case "grpc":
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -64,7 +81,7 @@ func newBackend(o options) (*backend, error) {
 			b.stream = stream
 			b.streamCreation = time.Since(start)
 		}
-	case "redis", "valkey":
+	case "resp":
 		b.redis = redis.NewClient(&redis.Options{Addr: o.address, PoolSize: 1, MinIdleConns: 1,
 			DialTimeout: 10 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second})
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -72,7 +89,7 @@ func newBackend(o options) (*backend, error) {
 		if err := b.redis.Ping(ctx).Err(); err != nil {
 			return nil, err
 		}
-	case "memcached", "memcached_extstore":
+	case "memcached":
 		b.mem = memcache.New(o.address)
 		b.mem.MaxIdleConns = 1
 		b.mem.Timeout = 10 * time.Second
@@ -97,14 +114,14 @@ func (b *backend) close() {
 func (b *backend) get(key string) ([]byte, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	switch b.kind {
+	switch b.family {
 	case "grpc":
 		r, e := b.grpcClient.Get(ctx, &pb.GetRequest{Key: key})
 		if e != nil {
 			return nil, false, e
 		}
 		return r.Value, r.Found, nil
-	case "redis", "valkey":
+	case "resp":
 		v, e := b.redis.Get(ctx, key).Bytes()
 		if e == redis.Nil {
 			return nil, false, nil
@@ -125,7 +142,7 @@ func (b *backend) get(key string) ([]byte, bool, error) {
 func (b *backend) set(key string, value []byte, ttl time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	switch b.kind {
+	switch b.family {
 	case "grpc":
 		r, e := b.grpcClient.Set(ctx, &pb.SetRequest{Key: key, Value: value, TtlSeconds: int64(ttl.Seconds())})
 		if e != nil {
@@ -135,7 +152,7 @@ func (b *backend) set(key string, value []byte, ttl time.Duration) error {
 			return errors.New("gRPC Set success=false")
 		}
 		return nil
-	case "redis", "valkey":
+	case "resp":
 		return b.redis.Set(ctx, key, value, ttl).Err()
 	default:
 		return b.mem.Set(&memcache.Item{Key: key, Value: value, Expiration: int32(ttl.Seconds())})
@@ -147,7 +164,7 @@ func (b *backend) batchGet(keys []string) ([][]byte, []bool, error) {
 	defer cancel()
 	values := make([][]byte, len(keys))
 	found := make([]bool, len(keys))
-	switch b.kind {
+	switch b.family {
 	case "grpc":
 		r, e := b.grpcClient.MultiGet(ctx, &pb.MultiGetRequest{Keys: keys})
 		if e != nil {
@@ -163,7 +180,7 @@ func (b *backend) batchGet(keys []string) ([][]byte, []bool, error) {
 			values[i] = x.Value
 			found[i] = x.Found
 		}
-	case "redis", "valkey":
+	case "resp":
 		cmds := make([]*redis.StringCmd, len(keys))
 		_, e := b.redis.Pipelined(ctx, func(p redis.Pipeliner) error {
 			for i, k := range keys {
@@ -203,7 +220,7 @@ func (b *backend) batchGet(keys []string) ([][]byte, []bool, error) {
 func (b *backend) batchSet(keys []string, value []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	switch b.kind {
+	switch b.family {
 	case "grpc":
 		items := make([]*pb.SetRequest, len(keys))
 		for i, k := range keys {
@@ -217,7 +234,7 @@ func (b *backend) batchSet(keys []string, value []byte) error {
 			return errors.New("MultiSet incomplete")
 		}
 		return nil
-	case "redis", "valkey":
+	case "resp":
 		_, e := b.redis.Pipelined(ctx, func(p redis.Pipeliner) error {
 			for _, k := range keys {
 				p.Set(ctx, k, value, 0)
@@ -540,7 +557,7 @@ func summarize(o options, p phase, warm []int64, stable bool, cpuBefore, cpuAfte
 
 func main() {
 	o := options{}
-	flag.StringVar(&o.backend, "backend", "grpc", "grpc|redis|valkey|memcached|memcached_extstore")
+	flag.StringVar(&o.backend, "backend", "grpc", "grpc|grpc_nvm|redis|valkey|dragonfly|dragonfly_tiered|garnet|garnet_storage|kvrocks|memcached|memcached_extstore")
 	flag.StringVar(&o.address, "address", "", "host:port")
 	flag.StringVar(&o.runID, "run-id", "run", "key namespace")
 	flag.StringVar(&o.pattern, "pattern", "uniform", "uniform|skew|hot_shift|one_pass")

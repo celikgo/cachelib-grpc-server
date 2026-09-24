@@ -46,7 +46,7 @@ For fast checks before a full build:
 protoc --proto_path=proto --cpp_out=/tmp proto/cache.proto
 python3 bench/render.py --check
 python3 bench/strong/render_report_tables.py --check
-python3 bench/strong/test_release_campaign.py
+python3 bench/strong/test_release_campaign.py   # covers both campaign definitions
 ```
 
 Once the complete release campaign is recorded, also run
@@ -108,6 +108,13 @@ where the measurement environment limits the result.
 The current-version comparative and media-object harnesses are documented in
 [bench/strong/README.md](bench/strong/README.md). Keep their raw run manifests
 and generated summaries separate from the historical 1.6.0 measurements.
+Campaigns are separate experiments and stay that way. `release_campaign.py` is
+the frozen 1.8.0 qualification: its group definitions are compared against the
+recorded `campaign.json`, so adding a key to one of its groups invalidates the
+committed evidence. A new comparison gets its own module, output paths and
+renderer — `landscape_campaign.py` and `render_landscape_report.py` are the
+worked example — and never regenerates another campaign's report.
+
 The [1.8.0 release report](bench/strong/RELEASE-1.8.0.md) also separates the
 fresh release campaign from the September 23 candidate qualification.
 Record the source commit, dirty-tree fingerprint when applicable, image IDs or

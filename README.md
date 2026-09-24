@@ -23,6 +23,87 @@ containers published to `ghcr.io/celikgo/cachelib-grpc-server`.
 
 ---
 
+## Choosing this in a design
+
+Read this before the quickstart. Every number here is measured evidence from the
+[1.8.0 release report](bench/strong/RELEASE-1.8.0.md) — medians of five
+60-second repetitions on one Apple Silicon laptop VM, four CPUs per service,
+zero request errors — not a projection. Comparator versions are named because
+they matter; a newer comparison is
+[a separate campaign](#current-landscape-measurements).
+
+### The argument for it
+
+Give a service 96 MiB of cache RAM and ask it for a 128 MiB working set of
+64 KiB objects sitting behind a 5 ms origin — the ordinary case where the data
+does not fit:
+
+| 96 MiB configured DRAM, 5 ms origin | Objects/s | Hit ratio | Origin requests | Peak memory |
+|---|---:|---:|---:|---:|
+| **CacheLib gRPC + Navy**, 512 MiB file | **16,553** | **100%** | **0** | 283.8 MiB |
+| CacheLib gRPC, DRAM only | 3,688 | 64.6% | 78,626 | 117.7 MiB |
+| Memcached 1.6, DRAM only | 4,319 | 68.8% | 80,794 | 107.4 MiB |
+| Redis 8.2, DRAM only | 2,782 | 58.5% | 69,221 | 100.0 MiB |
+| Valkey 8.1, DRAM only | 2,773 | 58.7% | 68,747 | 99.0 MiB |
+
+Peak memory is the container's cgroup peak, which is not the configured cache
+size: the file tier costs real RAM for its index and buffers.
+
+Flash capacity, not a faster request loop, is what removes the origin traffic:
+4.5× the throughput of the same service without it, and every origin request
+gone. Under equal *demand* rather than closed-loop pressure — 1,500 scheduled
+arrivals/s, same trace — the DRAM-only services sent 31,794 (this server) and
+37,448 (Redis) origin requests per minute while the Navy tier sent **0**, at a
+p99 of 1.913 ms against their 7.628 ms and 7.667 ms. If what sits behind your
+cache is the expensive part, that is the line that decides the design.
+
+So: choose this when a working set that outgrows affordable DRAM is the problem,
+when clients should see one cache rather than a tier they manage, when you are
+already on CacheLib in-process and want several processes to share those
+semantics, and when the interface matters — one `.proto`, generated clients in
+any gRPC language, deadlines, a streaming `Pipeline` with `sequence_id`
+correlation, order-preserving `MultiGet`/`MultiSet`, and Prometheus metrics
+derived from CacheLib's own counters. Its flash tier also needs no `io_uring`:
+every measurement here ran with `--enable_io_uring=false`.
+
+### The argument against it
+
+For cache hits served entirely from RAM, this server is the slowest option
+measured, and by a wide margin:
+
+| 1 KiB hits, 8 connections, all RAM | Objects/s | p99 | CPU per object |
+|---|---:|---:|---:|
+| Redis 8.2 | 126,735 | 0.120 ms | 7.0 μs |
+| Valkey 8.1 | 126,375 | 0.121 ms | 6.9 μs |
+| Memcached 1.6 | 104,111 | 0.136 ms | 12.9 μs |
+| **CacheLib gRPC 1.8.0** | **46,658** | 0.381 ms | **59.6 μs** |
+
+That is 2.7× less throughput than Redis and 8.5× the CPU per object. gRPC and
+protobuf framing cost real cycles, and nothing in this design recovers them. A
+flash tier is also not a monopoly: on the hybrid case above, Memcached's
+extstore reached 44,326 objects/s to Navy's 16,553 at the same configured
+cache and file budget, at a lower peak memory (195.0 against 283.8 MiB). For repeated 256 KiB objects over
+HTTP, NGINX served 3,025 objects/s to this server's 2,745 through its Python
+adapter.
+
+Choose something else when peak requests per core is the binding constraint;
+when you need Redis data structures, scripting, pub/sub, cluster mode,
+persistence or replication (this is 19 key/value RPCs and nothing more); when
+the cache itself must terminate authentication or TLS (it has
+[neither](SECURITY.md) and must sit behind a mesh or ingress); when you need
+HTTP or range delivery, which is an adapter here rather than a feature; or when
+you need multi-node sharding and failover, which this server does not provide.
+
+### What is not yet measured
+
+No result here covers a file tier under high volume or high arrival rates: every
+committed SSD+RAM measurement used a 128 MiB working set in a 512 MiB file over
+eight connections, which never makes the tier reclaim space or serve concurrent
+reads. The [landscape campaign](bench/strong/README.md#current-landscape-campaign)
+adds exactly that, and this README will not claim those results until it has run.
+
+---
+
 ## Quickstart
 
 The commands below use **1.8.0**. See the
@@ -76,15 +157,51 @@ representation that `grpcurl` uses. Native clients send raw bytes.
 
 ## Performance
 
-The [1.8.0 release report](bench/strong/RELEASE-1.8.0.md) records exact image
-identities, raw runs, and comparison limitations. The
-[harness guide](bench/strong/README.md) provides reproduction commands.
+Each campaign below is a separate experiment with its own image identities, raw
+runs and limitations, and their numbers are never pooled or restated for another
+campaign's comparator versions. The [harness guide](bench/strong/README.md) has
+the reproduction commands; every generated block on this page is rendered from
+committed evidence and checked in CI, so a number here cannot drift from the run
+that produced it.
+
+| Campaign | Engine measured | Compared against | Status |
+|---|---|---|---|
+| [Landscape](bench/strong/LANDSCAPE-1.8.0.md) | published `1.8.0` image | Redis 8.10.2, Valkey 9.1.2, Memcached 1.6.45, Dragonfly 2.0.0, Garnet 2.1.8, Kvrocks 2.17.0, NGINX 1.30.5 | defined, not yet run |
+| [1.8.0 release](bench/strong/RELEASE-1.8.0.md) | locally built `1.8.0` | Redis 8.2, Valkey 8.1, Memcached 1.6, NGINX 1.29 | complete, 195 runs |
+| [Sept 23 candidate](bench/strong/REPORT.md) | `1.8.0` release candidate | same as above | archived |
+| [Historical 1.6.0](BENCHMARKS.md) | `1.6.0` image | none — RAM-only, single service | archived |
+
+### Current landscape measurements
+
+The landscape campaign is defined in
+[`bench/strong/landscape_campaign.py`](bench/strong/landscape_campaign.py):
+**518 runs across 23 groups**, roughly 12.5 hours, measuring the *published*
+image rather than a local build. Beyond refreshing every comparator to its
+current release, it adds the SSD+RAM coverage no earlier campaign had — a 2 GiB
+working set driven through a 4 GiB file at 32 connections, a 6 GiB set over
+capacity so the tier reclaims continuously, the same volume in 16 KiB objects,
+10,000 scheduled arrivals/s over 64 connections, and five-minute runs for
+steady state — and an equal 1 GiB budget group, because Dragonfly 2.0.0 cannot
+be configured below 256 MiB per thread and would otherwise be unmeasurable.
+
+The block below is generated from that campaign's own evidence once it has run.
+
+<!-- BEGIN GENERATED LANDSCAPE: landscape-headlines -->
+Pending: this block is generated by `bench/strong/render_landscape_report.py`
+from a complete landscape campaign. No landscape numbers are claimed until that
+campaign has run.
+<!-- END GENERATED LANDSCAPE: landscape-headlines -->
 
 ### 1.8.0 release measurements
 
 <!-- BEGIN GENERATED RELEASE: release-headlines -->
 Measured on native Linux arm64 under Docker Desktop on Apple Silicon, with
-8 Docker CPUs. The results below are medians of five 60-second repetitions;
+8 Docker CPUs, against the comparator releases current when this campaign ran:
+Redis 8.2-alpine, Valkey 8.1-alpine, Memcached
+1.6-alpine and NGINX 1.29-alpine. A newer comparison
+against the current releases of those and of Dragonfly, Garnet and Kvrocks is a
+separate campaign; these numbers are not restated for newer comparator versions.
+The results below are medians of five 60-second repetitions;
 all these headline runs had zero request errors. KV services each had four
 CPUs, 96 MiB configured cache RAM, and a 768 MiB container limit unless stated
 otherwise; the client used four separate CPUs.
@@ -95,9 +212,9 @@ slower than the three comparison services:
 | Service | Requests/s | p99 |
 |---|---:|---:|
 | CacheLib gRPC 1.8.0 | 46,658 | 0.381 ms |
-| Redis | 126,735 | 0.120 ms |
-| Valkey | 126,375 | 0.121 ms |
-| Memcached | 104,111 | 0.136 ms |
+| Redis 8.2-alpine | 126,735 | 0.120 ms |
+| Valkey 8.1-alpine | 126,375 | 0.121 ms |
+| Memcached 1.6-alpine | 104,111 | 0.136 ms |
 
 - **Data larger than RAM:** with a 128 MiB reusable set of 64 KiB objects and
   a simulated 5 ms origin, adding a 512 MiB Navy file gave a median of
@@ -363,6 +480,10 @@ MetricsServer.*       Prometheus /metrics endpoint
 tests/                unit tests (gtest)
 patches/              upstream CacheLib build fixes for the pinned revision
 bench/                reproducible benchmark harness
+  strong/landscape_campaign.py   current-landscape campaign (published image vs latest releases)
+  strong/release_campaign.py     1.8.0 release qualification campaign (frozen)
+  strong/run_strong.py           KV engine launcher, case matrix, per-run evidence
+  strong/render_*_report.py      report/README generators, each with a --check mode
 ```
 
 ---

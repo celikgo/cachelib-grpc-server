@@ -89,6 +89,19 @@ that the current source passed. There is no qualified full-dependency TSan job �
   the fresh release report and README headline block use
   `bench/strong/render_release_report.py --check` after the complete campaign. Preserve separate versions, image identities, and environments. Regenerate
   tables from measured evidence; do not relabel old runs as current release measurements.
+- **One campaign, one module, one report.** `release_campaign.py` is the frozen 1.8.0
+  qualification: its `GROUPS` dicts are compared against the recorded `campaign.json`,
+  so adding a key to one of them invalidates committed evidence — that is why
+  `group()` adds `flash_mb`, `discard_flash` and `overload_probe` only when asked.
+  A newer comparison gets its own module, output paths and renderer, as
+  `landscape_campaign.py` and `render_landscape_report.py` do, and never renders from
+  another campaign's evidence. Comparator image pins belong to the campaign that
+  measured them; name versions from `campaign.json`, not from prose.
+- A group that deliberately offers more demand than an engine can serve is declared
+  with `overload_probe=True`, which records dropped arrivals as observations instead of
+  limiting unrelated groups' claims. Request errors still fail it. File-tier runs record
+  their backing-file size in `flash-usage.json` before the file is discarded; the
+  summarizer prefers that record and still measures retained files for archived runs.
 - `proto/cache.proto` is a published wire contract. Never renumber or reuse a field number,
   never change a field's type. Intentional incompatible semantics need a **new RPC** —
   `Incr` exists because replacing `Increment`'s TTL behavior would have broken callers.
