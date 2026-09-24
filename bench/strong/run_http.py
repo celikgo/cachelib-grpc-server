@@ -169,7 +169,7 @@ def main():
     p.add_argument("--grpc-image", required=True)
     p.add_argument("--go-client-image", default="cachebench-go:rc")
     p.add_argument("--utility-image", default="cachelib-investigation-client:local")
-    p.add_argument("--nginx-image", default="nginx:1.29-alpine")
+    p.add_argument("--nginx-image", default="nginx:1.30.5-alpine")
     p.add_argument("--output", type=pathlib.Path, required=True)
     p.add_argument("--cases", default="repeated_256k_c8")
     p.add_argument("--reps", type=int, default=5)

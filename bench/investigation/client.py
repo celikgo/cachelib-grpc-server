@@ -22,6 +22,25 @@ def payload(size):
     return (block * (size // 256 + 1))[:size]
 
 
+RESP_KINDS = ("redis", "valkey", "dragonfly", "dragonfly_tiered",
+              "garnet", "garnet_storage", "kvrocks")
+# Present-only: an engine that does not publish a field is recorded without it
+# rather than with a fabricated zero.
+RESP_STAT_FIELDS = ("redis_version", "valkey_version", "dragonfly_version",
+                    "garnet_version", "kvrocks_version", "used_memory",
+                    "used_memory_rss", "used_memory_startup", "keyspace_hits",
+                    "keyspace_misses", "evicted_keys", "expired_keys",
+                    "total_commands_processed", "maxmemory", "maxmemory_policy",
+                    "db0",
+                    # Garnet publishes neither used_memory nor keyspace_hits.
+                    "proc_private_memory_size", "total_found", "total_notfound",
+                    "garnet_hit_rate", "IndexTotalMemorySizeBytes",
+                    # Kvrocks reports its RAM budget as the RocksDB block cache.
+                    "block_cache_usage")
+RESP_STAT_PREFIXES = ("tiered_", "rocksdb.", "storage_", "Log.",
+                      "block_cache_data_", "sst_")
+
+
 class Backend:
     def __init__(self, kind, host, port):
         self.kind, self.host, self.port = kind, host, port
@@ -35,7 +54,7 @@ class Backend:
                     ("grpc.max_send_message_length", 8 * 1024 * 1024),
                 ])
                 self.local.client = rpc.CacheServiceStub(channel)
-            elif self.kind in ("redis", "valkey"):
+            elif self.kind in RESP_KINDS:
                 self.local.client = redis.Redis(host=self.host, port=self.port, socket_timeout=10)
             else:
                 self.local.client = MemcacheClient((self.host, self.port), connect_timeout=10,
@@ -53,7 +72,7 @@ class Backend:
         c = self.client()
         if self.kind == "grpc":
             return c.Set(pb.SetRequest(key=key, value=value, ttl_seconds=ttl), timeout=10).success
-        if self.kind in ("redis", "valkey"):
+        if self.kind in RESP_KINDS:
             return bool(c.set(key, value, ex=ttl or None))
         return bool(c.set(key, value, expire=ttl))
 
@@ -69,11 +88,23 @@ class Backend:
             r = c.Stats(pb.StatsRequest(), timeout=10)
             return {f.name: (len(getattr(r, f.name)) if f.label == 3 else getattr(r, f.name))
                     for f in r.DESCRIPTOR.fields}
-        if self.kind in ("redis", "valkey"):
-            info = c.info()
-            return {k: info.get(k) for k in (
-                "redis_version", "valkey_version", "used_memory", "used_memory_rss",
-                "keyspace_hits", "keyspace_misses", "evicted_keys", "total_commands_processed")}
+        if self.kind in RESP_KINDS:
+            try:
+                info = c.info("everything" if self.kind.startswith("garnet") else "all")
+            except redis.RedisError:
+                info = c.info()
+            flat = {}
+            for key, value in info.items():
+                if isinstance(value, dict):  # keyspace/section maps, e.g. db0
+                    flat[key] = json.dumps(value, sort_keys=True)
+                else:
+                    flat[key] = value
+            out = {k: flat[k] for k in RESP_STAT_FIELDS if k in flat}
+            out.update({k: v for k, v in flat.items()
+                        if k.startswith(RESP_STAT_PREFIXES)})
+            if not out:  # an engine with no INFO fields we recognise
+                out = {"resp_info_keys": len(flat), "dbsize": c.dbsize()}
+            return out
         return {k.decode(): (v.decode() if isinstance(v, bytes) else v) for k, v in c.stats().items()
                 if k in (b"version", b"bytes", b"curr_items", b"get_hits", b"get_misses", b"evictions")
                 or k.startswith(b"extstore_")}
@@ -312,7 +343,8 @@ def batch(args, b):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("command", choices=["verify", "run", "stats", "batch", "limits"])
-    p.add_argument("--backend", required=True, choices=["grpc", "redis", "valkey", "memcached"])
+    p.add_argument("--backend", required=True,
+                   choices=["grpc", "memcached", *RESP_KINDS])
     p.add_argument("--host", required=True)
     p.add_argument("--port", type=int, required=True)
     p.add_argument("--run-id", default="pilot")

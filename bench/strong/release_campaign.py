@@ -18,13 +18,30 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 DEFAULT_RUNS = pathlib.Path("bench/strong/runs/release-1.8.0-20260924")
 DEFAULT_RESULTS = pathlib.Path("bench/strong/release-1.8.0-results")
+# The comparator versions this campaign measured. Frozen: a newer comparison
+# belongs in its own campaign module with its own output paths.
+COMPARATORS = {"redis": "redis:8.2-alpine", "valkey": "valkey/valkey:8.1-alpine",
+               "memcached": "memcached:1.6-alpine", "nginx": "nginx:1.29-alpine"}
+# Engines the KV harness selects with a --<engine>-image argument. Only the keys
+# a campaign actually pins are passed through.
+ENGINE_IMAGE_KEYS = ("redis", "valkey", "memcached", "dragonfly", "garnet", "kvrocks")
 
 
 def group(name, cases, engines, reps=5, seconds=60, *, kind="kv", cache=96,
-          memory=768, headline=True):
-    return dict(name=name, cases=cases.split(","), engines=engines.split(","),
-                reps=reps, seconds=seconds, warmup=15, kind=kind,
+          memory=768, headline=True, warmup=15, flash=None, discard_flash=False,
+          overload_probe=False):
+    spec = dict(name=name, cases=cases.split(","), engines=engines.split(","),
+                reps=reps, seconds=seconds, warmup=warmup, kind=kind,
                 cache_mb=cache, memory_mb=memory, headline=headline)
+    # Optional keys only when set: a campaign already recorded without them must
+    # keep comparing equal to its own definition.
+    if flash is not None:
+        spec["flash_mb"] = flash
+    if discard_flash:
+        spec["discard_flash"] = True
+    if overload_probe:
+        spec["overload_probe"] = True
+    return spec
 
 
 GROUPS = [
@@ -46,6 +63,11 @@ GROUPS = [
     group("http-secondary", "recent_replay_256k_c8,repeated_1m_c8", "grpc_adapter,nginx", 2, 30, kind="http", headline=False),
     group("http-onepass", "onepass_256k_c8", "grpc_adapter,nginx,origin_direct", 2, 30, kind="http", headline=False),
 ]
+
+
+# Groups whose objective is zero origin requests; an origin request there limits
+# the claim rather than invalidating the run.
+FULL_HIT_GROUPS = ("primary", "ram192", "flash384", "parity1g-hit")
 
 
 def now():
@@ -134,12 +156,13 @@ def validate_group(spec, directory):
                 if probe.get("basic") != "passed" or (engine.startswith("grpc") and probe.get("batch_pipeline") != "passed"):
                     problems.append(f"{label}: correctness probe did not pass")
             if d.get("dropped_arrivals", 0):
-                target = observations if spec["name"] == "offered-saturation" else limitations
+                target = (observations if spec["name"] == "offered-saturation"
+                          or spec.get("overload_probe") else limitations)
                 target.append(f"{label}: dropped_arrivals={d['dropped_arrivals']}")
             if not d.get("warmup_stable", False) and not case.startswith("cold_"):
                 target = limitations if spec["headline"] else observations
                 target.append(f"{label}: warmup did not stabilize")
-            if spec["name"] in ("primary", "ram192", "flash384") and d.get("origins", 0):
+            if spec["name"] in FULL_HIT_GROUPS and d.get("origins", 0):
                 limitations.append(f"{label}: full-hit objective had {d['origins']} origin requests")
         elif spec["name"] == "http" and d.get("origin_requests_delta", 0):
             limitations.append(f"{label}: repeated-hit objective had {d['origin_requests_delta']} origin requests")
@@ -159,28 +182,38 @@ def group_command(spec, images, output):
     if spec["kind"] == "kv":
         parts += ["--engines", ",".join(spec["engines"]), "--cache-mb", str(spec["cache_mb"]),
                   "--memory-mb", str(spec["memory_mb"]), "--correctness-client-image", images["python"]["id"]]
-        for engine in ("redis", "valkey", "memcached"):
-            parts += [f"--{engine}-image", images[engine]["id"]]
+        if spec.get("flash_mb"):
+            parts += ["--flash-mb", str(spec["flash_mb"])]
+        if spec.get("discard_flash"):
+            parts += ["--discard-flash-files"]
+        for engine in ENGINE_IMAGE_KEYS:
+            if engine in images:
+                parts += [f"--{engine}-image", images[engine]["id"]]
     else:
         parts += ["--utility-image", images["python"]["id"], "--adapter-image", images["python"]["id"],
                   "--nginx-image", images["nginx"]["id"]]
     return parts
 
 
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
+def parser(description, default_runs, default_results, go_client, python_client):
+    p = argparse.ArgumentParser(description=description)
     p.add_argument("--grpc-image")
-    p.add_argument("--go-client-image", default="cachebench-go:rc")
-    p.add_argument("--python-client-image", default="cachelib-investigation-client:local")
-    p.add_argument("--runs", type=pathlib.Path, default=DEFAULT_RUNS)
-    p.add_argument("--results", type=pathlib.Path, default=DEFAULT_RESULTS)
+    p.add_argument("--go-client-image", default=go_client)
+    p.add_argument("--python-client-image", default=python_client)
+    p.add_argument("--runs", type=pathlib.Path, default=default_runs)
+    p.add_argument("--results", type=pathlib.Path, default=default_results)
     p.add_argument("--resume", action="store_true", help="Continue only groups never started; no repetitions are rerun")
     p.add_argument("--plan", action="store_true", help="Print measurement schedule without accessing Docker")
-    args = p.parse_args()
-    if args.plan:
-        print(json.dumps({"groups": GROUPS, "runs": sum(len(expected_runs(g)) for g in GROUPS),
-                          "minimum_timed_seconds": sum(len(expected_runs(g)) * (g["seconds"] + g["warmup"]) for g in GROUPS)}, indent=2))
-        return
+    return p
+
+
+def plan(groups):
+    return {"groups": groups, "runs": sum(len(expected_runs(g)) for g in groups),
+            "minimum_timed_seconds": sum(len(expected_runs(g)) * (g["seconds"] + g["warmup"]) for g in groups)}
+
+
+def run(p, args, groups, comparators):
+    GROUPS = groups  # the campaign definition this run measures and records
     if not args.grpc_image:
         p.error("--grpc-image is required unless --plan is used")
     args.runs = args.runs.resolve()
@@ -206,8 +239,7 @@ def main():
             p.error("output paths already exist; use --resume or new paths, never overwrite evidence")
         info = json.loads(command(["docker", "info", "--format", "{{json .}}"])); refs = {
             "grpc": args.grpc_image, "go": args.go_client_image, "python": args.python_client_image,
-            "redis": "redis:8.2-alpine", "valkey": "valkey/valkey:8.1-alpine",
-            "memcached": "memcached:1.6-alpine", "nginx": "nginx:1.29-alpine"}
+            **comparators}
         if info.get("NCPU", 0) < 8:
             p.error("at least 8 Docker CPUs are required")
         state = {"schema": 1, "started_utc": now(), "host": platform.platform(),
@@ -256,6 +288,16 @@ def main():
     save(args.results / "campaign.json", state)
     print(f"Campaign finished; qualified={state['qualified']}", flush=True)
     raise SystemExit(0 if state["valid"] else 1)
+
+
+def main():
+    p = parser(__doc__, DEFAULT_RUNS, DEFAULT_RESULTS,
+               "cachebench-go:rc", "cachelib-investigation-client:local")
+    args = p.parse_args()
+    if args.plan:
+        print(json.dumps(plan(GROUPS), indent=2))
+        return
+    run(p, args, GROUPS, COMPARATORS)
 
 
 if __name__ == "__main__":

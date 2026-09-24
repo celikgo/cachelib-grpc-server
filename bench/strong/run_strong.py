@@ -12,14 +12,30 @@ import os
 import pathlib
 import platform
 import random
+import shutil
 import subprocess
 import sys
 import time
 import uuid
 
 
-IMAGES = {"redis": "redis:8.2-alpine", "valkey": "valkey/valkey:8.1-alpine",
-          "memcached": "memcached:1.6-alpine", "memcached_extstore": "memcached:1.6-alpine"}
+# Latest official releases as of 2026-09-24, pinned to explicit patch versions
+# so the measured engine build is identifiable from the harness alone. A tag is
+# still resolved to an immutable local image ID before any measurement.
+IMAGES = {"redis": "redis:8.10.2-alpine", "valkey": "valkey/valkey:9.1.2-alpine",
+          "memcached": "memcached:1.6.45-alpine", "memcached_extstore": "memcached:1.6.45-alpine",
+          "dragonfly": "docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.0",
+          "dragonfly_tiered": "docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.0",
+          "garnet": "ghcr.io/microsoft/garnet:2.1.8",
+          "garnet_storage": "ghcr.io/microsoft/garnet:2.1.8",
+          "kvrocks": "apache/kvrocks:2.17.0"}
+# Engines whose image is selected by one --<engine>-image argument.
+BASE_ENGINES = ("redis", "valkey", "memcached", "dragonfly", "garnet", "kvrocks")
+# Engines that receive the task-owned file mounted at /data.
+FILE_TIER_ENGINES = ("grpc_nvm", "memcached_extstore", "dragonfly_tiered",
+                     "garnet_storage", "kvrocks")
+PORTS = {"grpc": 50051, "memcached": 11211, "kvrocks": 6666,
+         "redis": 6379, "valkey": 6379, "dragonfly": 6379, "garnet": 6379}
 CASES = {
     # Below a 96 MiB cache; hit tests are read-only unless stated otherwise.
     "hit_100b_c8": (100, 1000, 8, "uniform", "read-only", "unary", True, 0, "closed", 0),
@@ -31,8 +47,11 @@ CASES = {
     "hit_64k_c8": (65536, 1000, 8, "uniform", "read-only", "unary", True, 0, "closed", 0),
     "hit_256k_c8": (262144, 160, 8, "uniform", "read-only", "unary", True, 0, "closed", 0),
     "hit_1m_c4": (1048576, 40, 4, "uniform", "read-only", "unary", True, 0, "closed", 0),
+    "hit_1k_c32": (1024, 1000, 32, "uniform", "read-only", "unary", True, 0, "closed", 0),
+    "hit_1k_c64": (1024, 1000, 64, "uniform", "read-only", "unary", True, 0, "closed", 0),
     "readheavy_1k_c8": (1024, 1000, 8, "skew", "read-heavy", "unary", True, 0, "closed", 0),
     "mixed_1k_c8": (1024, 1000, 8, "skew", "mixed", "unary", True, 0, "closed", 0),
+    "mixed_1k_c32": (1024, 1000, 32, "skew", "mixed", "unary", True, 0, "closed", 0),
     "batch_get_1k_c8": (1024, 1000, 8, "uniform", "read-only", "batch-get", True, 0, "closed", 0),
     "batch_set_1k_c8": (1024, 1000, 8, "uniform", "read-only", "batch-set", True, 0, "closed", 0),
     "pipeline_1k_c8": (1024, 1000, 8, "uniform", "read-only", "pipeline", True, 0, "closed", 0),
@@ -40,17 +59,32 @@ CASES = {
     "origin_uniform_64k_1ms": (65536, 2048, 8, "uniform", "origin", "unary", True, 1, "closed", 0),
     "origin_near_64k_5ms": (65536, 1400, 8, "uniform", "origin", "unary", True, 5, "closed", 0),
     "origin_uniform_64k_5ms": (65536, 2048, 8, "uniform", "origin", "unary", True, 5, "closed", 0),
+    # 1.28 GiB payload against a configured 1 GiB DRAM cache: the same 1.33x
+    # oversubscription as the 96 MiB cases, at a budget every engine accepts.
+    "origin_uniform_64k_1gib": (65536, 20480, 8, "uniform", "origin", "unary", True, 5, "closed", 0),
     # Starts measurement with no workload keys loaded or warmup operations.
     "cold_origin_uniform_64k_5ms": (65536, 2048, 8, "uniform", "origin", "unary", False, 5, "closed", 0),
     "origin_uniform_64k_20ms": (65536, 2048, 8, "uniform", "origin", "unary", True, 20, "closed", 0),
     "origin_skew_64k_5ms": (65536, 2048, 8, "skew", "origin", "unary", True, 5, "closed", 0),
     "origin_shift_64k_5ms": (65536, 2048, 8, "hot_shift", "origin", "unary", False, 5, "closed", 0),
     "onepass_64k_5ms": (65536, 2048, 4, "one_pass", "origin", "unary", False, 5, "closed", 0),
+    # SSD+RAM at volume. A 2 GiB set fits the 4 GiB file but is eight times the
+    # 256 MiB DRAM, so nearly every hit is a concurrent flash read — what a
+    # 128 MiB set in a 512 MiB file over eight connections never asks for.
+    "origin_uniform_64k_2gib_c32": (65536, 32768, 32, "uniform", "origin", "unary", True, 5, "closed", 0),
+    "origin_skew_64k_2gib_c32": (65536, 32768, 32, "skew", "origin", "unary", True, 5, "closed", 0),
+    "origin_uniform_16k_2gib_c32": (16384, 131072, 32, "uniform", "origin", "unary", True, 5, "closed", 0),
+    # Over capacity: a 6 GiB set against a 4 GiB file. The tier must evict and
+    # reclaim continuously and cannot avoid every origin request. No preload;
+    # the trace fills the tier, so measurement observes steady-state reclaim.
+    "origin_uniform_64k_6gib_c32": (65536, 98304, 32, "uniform", "origin", "unary", False, 5, "closed", 0),
     # Set offered rate after a closed-loop pilot establishes a feasible common rate.
     "offered_1k_20k": (1024, 1000, 8, "uniform", "read-only", "unary", True, 0, "offered", 20000),
     "offered_1k_50k": (1024, 1000, 16, "uniform", "read-only", "unary", True, 0, "offered", 50000),
     "offered_1k_80k": (1024, 1000, 16, "uniform", "read-only", "unary", True, 0, "offered", 80000),
+    "offered_1k_120k": (1024, 1000, 16, "uniform", "read-only", "unary", True, 0, "offered", 120000),
     "offered_origin_64k_1500": (65536, 2048, 8, "uniform", "origin", "unary", True, 5, "offered", 1500),
+    "offered_origin_64k_2gib_10k": (65536, 32768, 64, "uniform", "origin", "unary", True, 5, "offered", 10000),
 }
 
 
@@ -97,35 +131,97 @@ def verify(network, name, backend, port, client_image):
     return json.loads(p.stdout.strip().splitlines()[-1])
 
 
+def server_arguments(engine, args):
+    """Server arguments per engine: four threads, the configured RAM budget, no
+    persistence, and cache-style eviction where the engine offers it. A file
+    tier receives the task-owned /data mount and the same file budget."""
+    cache_mb, flash_mb = args.cache_mb, args.flash_mb
+    if engine.startswith("grpc"):
+        out = [f"--cache_size={cache_mb*1048576}", "--metrics_port=0",
+               "--nvm_reader_threads=4", "--nvm_writer_threads=4"]
+        if engine == "grpc_nvm":
+            out += ["--enable_nvm=true", "--enable_io_uring=false", "--nvm_path=/data/navy",
+                    f"--nvm_size={flash_mb*1048576}"]
+        return out
+    if engine in ("redis", "valkey"):
+        return ["--save", "", "--appendonly", "no", "--maxmemory", str(cache_mb*1048576),
+                "--maxmemory-policy", "allkeys-lru"]
+    if engine.startswith("memcached"):
+        out = ["-m", str(cache_mb), "-t", "4", "-I", "5m", "-U", "0"]
+        if engine == "memcached_extstore":
+            out += ["-o", f"ext_path=/data/extstore:{flash_mb}m,ext_item_size=2048,ext_wbuf_size=8"]
+        return out
+    if engine.startswith("dragonfly"):
+        # Measured on 2026-09-24 with 2.0.0: the server exits unless maxmemory is
+        # at least 256 MiB per proactor thread, and a tiering file is at least
+        # that large again. Fail here rather than mid-measurement.
+        threads = 4
+        if cache_mb < 256 * threads:
+            raise ValueError(f"Dragonfly requires >= {256*threads} MiB maxmemory "
+                             f"for {threads} threads; got {cache_mb} MiB")
+        out = ["--bind", "0.0.0.0", "--port", "6379", f"--maxmemory={cache_mb}mb",
+               "--cache_mode=true", f"--proactor_threads={threads}",
+               "--dbfilename=", "--snapshot_cron="]
+        if engine == "dragonfly_tiered":
+            if flash_mb < 256 * threads:
+                raise ValueError(f"Dragonfly tiering requires >= {256*threads} MiB "
+                                 f"of file; got {flash_mb} MiB")
+            # Tiering additionally requires io_uring; it aborts in
+            # InitTieredStorage under the epoll fallback.
+            out += ["--tiered_prefix=/data/dragonfly",
+                    f"--tiered_max_file_size={flash_mb}mb"]
+        return out
+    if engine.startswith("garnet"):
+        out = ["--port", "6379", "--bind", "0.0.0.0", "--memory", f"{cache_mb}m",
+               "--index", "16m", "--no-obj", "--checkpointdir", "/tmp/garnet-checkpoint"]
+        if engine == "garnet_storage":
+            out += ["--storage-tier", "true", "--logdir", "/data"]
+        return out
+    if engine == "kvrocks":
+        return ["--bind", "0.0.0.0", "--port", "6666", "--dir", "/data",
+                "--rocksdb.block_cache_size", str(cache_mb), "--daemonize", "no"]
+    raise ValueError(f"no server arguments defined for {engine}")
+
+
 def setup(engine, name, network, directory, args):
-    image = args.grpc_image if engine.startswith("grpc") else args.engine_images[engine]
-    backend = "grpc" if engine.startswith("grpc") else "memcached" if engine.startswith("memcached") else engine
-    port = 50051 if backend == "grpc" else 11211 if backend == "memcached" else 6379
+    base = engine.split("_")[0]
+    image = args.grpc_image if base == "grpc" else args.engine_images[engine]
+    backend = "grpc" if base == "grpc" else "memcached" if base == "memcached" else engine
+    port = PORTS[base]
     command = ["docker", "run", "-d", "--name", name, "--network", network,
                "--cpus", "4", "--cpuset-cpus", "0-3", "--memory", f"{args.memory_mb}m",
                "--memory-swap", f"{args.memory_mb}m"]
-    if engine in ("grpc_nvm", "memcached_extstore"):
+    if engine in FILE_TIER_ENGINES:
         flash = directory / "flash"
         flash.mkdir(exist_ok=True)
         os.chmod(flash, 0o777)  # only the task-owned directory; image runs non-root
         command += ["--mount", f"type=bind,src={flash.resolve()},dst=/data"]
     command.append(image)
-    if engine.startswith("grpc"):
-        command += [f"--cache_size={args.cache_mb*1048576}", "--metrics_port=0",
-                    "--nvm_reader_threads=4", "--nvm_writer_threads=4"]
-        if engine == "grpc_nvm":
-            command += ["--enable_nvm=true", "--enable_io_uring=false", "--nvm_path=/data/navy",
-                        f"--nvm_size={args.flash_mb*1048576}"]
-    elif engine in ("redis", "valkey"):
-        command += ["--save", "", "--appendonly", "no", "--maxmemory", str(args.cache_mb*1048576),
-                    "--maxmemory-policy", "allkeys-lru"]
-    else:
-        command += ["-m", str(args.cache_mb), "-t", "4", "-I", "5m", "-U", "0"]
-        if engine == "memcached_extstore":
-            command += ["-o", f"ext_path=/data/extstore:{args.flash_mb}m,ext_item_size=2048,ext_wbuf_size=8"]
+    command += server_arguments(engine, args)
     (directory / "server-command.json").write_text(json.dumps(command, indent=2) + "\n")
     call(command)
     return backend, port
+
+
+def record_flash_usage(directory, discard):
+    """Record the backing file's measured size, then optionally reclaim the disk.
+
+    The sizes are evidence; the bytes are not. Recording them lets a high-volume
+    campaign drive multi-GiB files without retaining one per run.
+    """
+    flash = directory / "flash"
+    if not flash.exists():
+        return
+    files = sorted(f for f in flash.rglob("*") if f.is_file())
+    entries = [{"path": f.relative_to(flash).as_posix(), "logical_bytes": f.stat().st_size,
+                "allocated_bytes": f.stat().st_blocks * 512} for f in files]
+    usage = {"files": entries,
+             "flash_file_logical_bytes": sum(e["logical_bytes"] for e in entries),
+             "flash_file_allocated_bytes": sum(e["allocated_bytes"] for e in entries),
+             "discarded_after_measurement": bool(discard)}
+    (directory / "flash-usage.json").write_text(json.dumps(usage, indent=2) + "\n")
+    if discard:
+        shutil.rmtree(flash, ignore_errors=True)
 
 
 def run_once(engine, case_name, repeat, network, root, args):
@@ -211,6 +307,8 @@ def run_once(engine, case_name, repeat, network, root, args):
                 (directory / "server.log").write_text((logs.stdout or "") + (logs.stderr or ""))
             docker("stop", container, check=False, timeout=30)
             docker("rm", container, check=False, timeout=30)
+        if engine in FILE_TIER_ENGINES:
+            record_flash_usage(directory, args.discard_flash_files)
 
 
 def main():
@@ -218,7 +316,7 @@ def main():
     parser.add_argument("--grpc-image", required=True)
     parser.add_argument("--go-client-image", default="cachebench-go:rc")
     parser.add_argument("--correctness-client-image", default="cachelib-investigation-client:local")
-    for engine in ("redis", "valkey", "memcached"):
+    for engine in BASE_ENGINES:
         parser.add_argument(f"--{engine}-image", default=IMAGES[engine])
     parser.add_argument("--engines", default="grpc,redis,valkey,memcached")
     parser.add_argument("--cases", default="hit_1k_c1,hit_1k_c8")
@@ -228,11 +326,13 @@ def main():
     parser.add_argument("--cache-mb", type=int, default=96)
     parser.add_argument("--memory-mb", type=int, default=768)
     parser.add_argument("--flash-mb", type=int, default=512)
+    parser.add_argument("--discard-flash-files", action="store_true",
+                        help="Delete each run's backing file after recording its measured size")
     parser.add_argument("--output", type=pathlib.Path, required=True)
     args = parser.parse_args()
-    args.engine_images = {engine: getattr(args, f"{engine}_image")
-                          for engine in ("redis", "valkey", "memcached")}
-    args.engine_images["memcached_extstore"] = args.memcached_image
+    args.engine_images = {engine: getattr(args, f"{engine}_image") for engine in BASE_ENGINES}
+    for variant in ("memcached_extstore", "dragonfly_tiered", "garnet_storage"):
+        args.engine_images[variant] = args.engine_images[variant.split("_")[0]]
     if args.reps < 1 or args.seconds < 1 or args.warmup < 1 or args.memory_mb < args.cache_mb:
         parser.error("invalid duration, repetition count, or memory budget")
     cases = args.cases.split(",")

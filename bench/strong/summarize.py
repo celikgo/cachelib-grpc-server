@@ -67,7 +67,9 @@ def svg_chart(path, title, groups, field, unit):
     colors = {"grpc": "#1d6fa5", "grpc_nvm": "#158b8b", "redis": "#b94a48",
               "valkey": "#8b5a9f", "memcached": "#d48524",
               "memcached_extstore": "#b59a1d", "nginx": "#367b45",
-              "grpc_adapter": "#1d6fa5"}
+              "grpc_adapter": "#1d6fa5", "dragonfly": "#3f7f4f",
+              "dragonfly_tiered": "#6a9e56", "garnet": "#a14a72",
+              "garnet_storage": "#c0748f", "kvrocks": "#7a6a52"}
     lines = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
              f'viewBox="0 0 {width} {height}">',
              '<rect width="100%" height="100%" fill="white"/>',
@@ -114,7 +116,19 @@ def main():
             io_before = io_counters((path / "server-cgroup-before.txt").read_text())
             io_after = io_counters((path / "server-cgroup-after.txt").read_text())
             stats_before, stats_after = d["server_stats_before"], d["server_stats_after"]
-            flash_files = [f for f in (path / "flash").glob("*") if f.is_file()]
+            # A high-volume run records its backing-file size and then reclaims
+            # the disk, so prefer the recorded measurement when it exists.
+            # Recursive: Navy and extstore write one top-level file, while
+            # Garnet's storage tier and Kvrocks write into subdirectories.
+            usage_path = path / "flash-usage.json"
+            if usage_path.exists():
+                usage = json.loads(usage_path.read_text())
+                flash_logical = usage["flash_file_logical_bytes"]
+                flash_allocated = usage["flash_file_allocated_bytes"]
+            else:
+                flash_files = [f for f in (path / "flash").rglob("*") if f.is_file()]
+                flash_logical = sum(f.stat().st_size for f in flash_files)
+                flash_allocated = sum(f.stat().st_blocks*512 for f in flash_files)
             cpu = (after.get("usage_usec", 0)-before.get("usage_usec", 0))/1e6
             completed = d["operations"]-d["errors"]
             gets = d.get("get_attempts", d["operations"])
@@ -138,8 +152,8 @@ def main():
                     "client_cpu_s": (d["client_cgroup_after"].get("usage_usec", 0)-
                                      d["client_cgroup_before"].get("usage_usec", 0))/1e6,
                     "client_memory_peak_bytes": d["client_cgroup_after"].get("memory.peak"),
-                    "flash_file_logical_bytes": sum(f.stat().st_size for f in flash_files),
-                    "flash_file_allocated_bytes": sum(f.stat().st_blocks*512 for f in flash_files),
+                    "flash_file_logical_bytes": flash_logical,
+                    "flash_file_allocated_bytes": flash_allocated,
                     "nvm_hits_delta": int(d["server_stats_after"].get("nvm_hit_count", 0))-
                                       int(d["server_stats_before"].get("nvm_hit_count", 0)),
                     "nvm_written_bytes_delta": int(d["server_stats_after"].get("nvm_used", 0))-
