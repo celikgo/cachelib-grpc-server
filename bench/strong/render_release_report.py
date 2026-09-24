@@ -48,6 +48,17 @@ def percent(value):
     return f"{percentage:.1f}%"
 
 
+def measured_versions(results):
+    """Name the comparator builds this campaign actually resolved and ran."""
+    campaign = json.loads((results / "campaign.json").read_text())
+    versions = {}
+    for role, identity in campaign["images"].items():
+        requested = identity.get("requested", "")
+        if ":" in requested and not requested.startswith("sha256:"):
+            versions[role] = requested.split(":", 1)[1]
+    return versions
+
+
 def readme_headlines(runs, results):
     """Keep README claims bound to qualified raw runs and recorded summaries."""
     specs = [spec for spec in GROUPS if spec["headline"]]
@@ -78,11 +89,19 @@ def readme_headlines(runs, results):
     comparison = ("slower than the three comparison services:" if
                   all(primary["grpc"]["objects_s"] < primary[e]["objects_s"] for e in ("redis", "valkey", "memcached"))
                   else "measured alongside three comparison services:")
+    versions = measured_versions(results)
     rows = "\n".join(f"| {label} | {value('primary', engine)} | {value('primary', engine, 'p99_ms', 3)} ms |"
-                     for engine, label in (("grpc", "CacheLib gRPC 1.8.0"), ("redis", "Redis"),
-                                           ("valkey", "Valkey"), ("memcached", "Memcached")))
+                     for engine, label in (("grpc", "CacheLib gRPC 1.8.0"),
+                                           ("redis", f"Redis {versions.get('redis', '')}".strip()),
+                                           ("valkey", f"Valkey {versions.get('valkey', '')}".strip()),
+                                           ("memcached", f"Memcached {versions.get('memcached', '')}".strip())))
     return f"""Measured on native Linux arm64 under Docker Desktop on Apple Silicon, with
-8 Docker CPUs. The results below are medians of five 60-second repetitions;
+8 Docker CPUs, against the comparator releases current when this campaign ran:
+Redis {versions.get('redis', '—')}, Valkey {versions.get('valkey', '—')}, Memcached
+{versions.get('memcached', '—')} and NGINX {versions.get('nginx', '—')}. A newer comparison
+against the current releases of those and of Dragonfly, Garnet and Kvrocks is a
+separate campaign; these numbers are not restated for newer comparator versions.
+The results below are medians of five 60-second repetitions;
 all these headline runs had zero request errors. KV services each had four
 CPUs, 96 MiB configured cache RAM, and a 768 MiB container limit unless stated
 otherwise; the client used four separate CPUs.

@@ -6,6 +6,76 @@ repository. Published images live at
 [`ghcr.io/celikgo/cachelib-grpc-server`][pkg]; a source tag or changelog entry
 alone does not mean an image was published. Publication exceptions are noted below.
 
+## Unreleased
+
+Benchmark harness only; no runtime, proto or image change.
+
+### Added
+- `bench/strong/landscape_campaign.py` and `render_landscape_report.py`: a
+  separate campaign measuring the **published** `1.8.0` image against the
+  current release of every comparable service — 391 runs in 18 groups. It has
+  its own output paths and report (`LANDSCAPE-1.8.0.md`, plus a generated
+  `landscape-headlines` README block) and pools no numbers with the 1.8.0
+  release qualification, the September 23 candidate report, or the historical
+  1.6.0 tables, none of which it modifies.
+- Comparator engines: Dragonfly, Garnet and Kvrocks, driven over RESP by both
+  benchmark clients, each with a key-specific correctness probe before its
+  measurement. `dragonfly_tiered` and `garnet_storage` add file tiers.
+- Cases: `hit_1k_c32`, `hit_1k_c64`, `mixed_1k_c32` and `offered_1k_120k`
+  concurrency/overload stress, and `origin_uniform_64k_1gib`, a 1.28 GiB
+  reusable set against an equal 1 GiB configured cache. The equal-1 GiB parity
+  groups exist because Dragonfly 2.0.0 exits unless `maxmemory` is at least
+  256 MiB per proactor thread and therefore cannot be measured at 96 or
+  192 MiB.
+- SSD+RAM groups under volume and traffic, which no previous campaign performed:
+  a 2 GiB working set through a 4 GiB file at 32 connections (uniform and
+  skewed), the same volume in 16 KiB objects, 10,000 scheduled arrivals/s over
+  64 connections, and five-minute runs for reclaim/compaction steady state. Every
+  earlier file-tier comparison used a 128 MiB working set in a 512 MiB file over
+  eight connections, which never makes the tier reclaim space or serve
+  concurrent reads.
+- Per-group backing-file size (`--flash-mb` per group) and
+  `--discard-flash-files`, which records each run's measured file size in
+  `flash-usage.json` before deleting the file. The summarizer prefers that
+  record and falls back to measuring retained files, so archived runs are read
+  exactly as before.
+
+### Changed
+- Comparator pins for new campaigns move to the latest official releases:
+  Redis 8.10.2, Valkey 9.1.2, Memcached 1.6.45, NGINX 1.30.5. The 1.8.0 release
+  campaign keeps the versions it actually measured.
+- File-tier byte accounting counts files in subdirectories, which Garnet's
+  storage tier and Kvrocks use; Navy and extstore are unaffected.
+
+### Documentation
+- `README.md` opens with a **"Choosing this in a design"** section: the measured
+  case for the hybrid tier, the measured case against the service on all-RAM
+  throughput and against extstore on the same file budget, what to choose
+  instead in which situation, and an explicit statement of what is not yet
+  measured. Every number is cited from the release report rather than asserted.
+- The Performance section now identifies each campaign, the engine it measured
+  and the comparator versions it measured against, and the generated release
+  block names those versions from the recorded `campaign.json` instead of
+  leaving "Redis" undated.
+- `CONTRIBUTING.md`, `CLAUDE.md`, `BENCHMARKS.md`, `docs/releasing.md` and
+  `bench/strong/README.md` state the one-campaign-one-module-one-report rule,
+  and that the landscape campaign is not a release gate.
+
+### Tested
+- `bench/strong/test_release_campaign.py` grew from 10 to 23 cases: the frozen
+  release definition carries no optional group keys, an `overload_probe` records
+  drops as observations while request errors still fail it, every landscape case
+  and engine is launchable and renderable, Dragonfly refuses a budget it cannot
+  run, and `record_flash_usage` measures subdirectories and reclaims the disk
+  only when asked.
+
+### Known limitation
+- Dragonfly tiered storage requires io_uring and aborts in
+  `InitTieredStorage()` under the epoll fallback Docker Desktop forces, so no
+  Dragonfly file-tier measurement exists on that host. Its configuration
+  remains in the harness for a host that offers io_uring. Dragonfly's DRAM
+  results on such a host also run under epoll and understate it accordingly.
+
 ## [1.8.0] — 2026-09-24
 
 [Release notes and assets](https://github.com/celikgo/cachelib-grpc-server/releases/tag/v1.8.0)

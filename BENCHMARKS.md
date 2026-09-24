@@ -3,7 +3,9 @@
 This page is the **historical 1.6.0 RAM-only archive**, not a performance claim
 for the current release. The [1.8.0 release qualification](bench/strong/RELEASE-1.8.0.md)
 has separate image identities, raw results, a compiled-client methodology, and
-DRAM+flash tests. Its [harness guide](bench/strong/README.md) explains how to
+DRAM+flash tests, and the [landscape campaign](bench/strong/README.md#current-landscape-campaign)
+compares the published image against the current release of every comparable
+service, including SSD+RAM tests under volume and traffic. Its [harness guide](bench/strong/README.md) explains how to
 reproduce the current-version experiments.
 
 All numbers below were measured on the hardware stated here, with the harness

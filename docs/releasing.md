@@ -104,7 +104,10 @@ done
 ```
 
 Refresh the benchmark report and its generated tables using the documented
-[benchmark procedure](../bench/strong/README.md). Compare like-for-like
+[benchmark procedure](../bench/strong/README.md). The release gate is the
+release campaign and its report; the landscape campaign is a separate
+comparison against third-party releases and is not a release gate. Do not
+regenerate one from the other's evidence. Compare like-for-like
 workloads, retain raw manifests, and disclose native/emulated execution. Pass
 the `-measured` runtime tag to the campaign and retain the immutable image ID
 it records. Keep the inspection files and executable checksums above with that
