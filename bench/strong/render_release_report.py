@@ -9,6 +9,8 @@ import statistics
 from release_campaign import DEFAULT_RESULTS, DEFAULT_RUNS, GROUPS, ROOT, expected_runs, validate_group
 
 REPORT = ROOT / "bench/strong/RELEASE-1.8.0.md"
+README_BEGIN = "<!-- BEGIN GENERATED RELEASE: release-headlines -->"
+README_END = "<!-- END GENERATED RELEASE: release-headlines -->"
 LABELS = {"grpc": "CacheLib gRPC DRAM", "grpc_nvm": "CacheLib gRPC + Navy",
           "redis": "Redis OSS", "valkey": "Valkey", "memcached": "Memcached DRAM",
           "memcached_extstore": "Memcached extstore", "grpc_adapter": "gRPC + Python HTTP adapter",
@@ -35,6 +37,97 @@ def median(rows, key):
 
 def number(value, places=0):
     return "—" if value is None else f"{value:,.{places}f}"
+
+
+def percent(value):
+    if value is None:
+        return "—"
+    percentage = value * 100
+    if 0 < value < 1 and round(percentage, 1) == 100:
+        return f"{percentage:.3f}%" if round(percentage, 3) < 100 else "<100%"
+    return f"{percentage:.1f}%"
+
+
+def readme_headlines(runs, results):
+    """Keep README claims bound to qualified raw runs and recorded summaries."""
+    specs = [spec for spec in GROUPS if spec["headline"]]
+    limited = [spec["name"] for spec in specs if not validate_group(spec, runs / spec["name"])["qualified"]]
+    if limited:
+        return ("Headline comparisons are withheld because these groups did not qualify: " +
+                ", ".join(f"`{name}`" for name in limited) + ". See the "
+                "[release report](bench/strong/RELEASE-1.8.0.md) for the retained results and limitations.")
+    groups = {}
+    for spec in specs:
+        summary = json.loads((results / spec["name"] / "summary.json").read_text())
+        expected = {f"{case}/{engine}" for case in spec["cases"] for engine in spec["engines"]}
+        if (summary["failed_runs"] or set(summary["groups"]) != expected or
+                any(g["n"] != spec["reps"] or g["errors"] for g in summary["groups"].values())):
+            raise ValueError(f"README summary is incomplete or failed: {spec['name']}")
+        groups[spec["name"]] = {engine: summary["groups"][f"{spec['cases'][0]}/{engine}"]["medians"]
+                                for engine in spec["engines"]}
+    def value(group, engine, field="objects_s", places=0):
+        return number(groups[group][engine][field], places)
+    for name in ("primary", "ram192", "flash384", "http"):
+        with (results / name / "runs.csv").open() as source:
+            for row in csv.DictReader(source):
+                if float(row["origins"]) != 0 or float(row["hit_ratio"]) != 1:
+                    raise ValueError(f"README full-hit statement is unsupported: {name}/{row['engine']}")
+    if groups["hybrid"]["grpc_nvm"]["nvm_device_bytes_read_delta"] <= 0:
+        raise ValueError("README Navy file-read statement requires measured device reads")
+    primary = groups["primary"]
+    comparison = ("slower than the three comparison services:" if
+                  all(primary["grpc"]["objects_s"] < primary[e]["objects_s"] for e in ("redis", "valkey", "memcached"))
+                  else "measured alongside three comparison services:")
+    rows = "\n".join(f"| {label} | {value('primary', engine)} | {value('primary', engine, 'p99_ms', 3)} ms |"
+                     for engine, label in (("grpc", "CacheLib gRPC 1.8.0"), ("redis", "Redis"),
+                                           ("valkey", "Valkey"), ("memcached", "Memcached")))
+    return f"""Measured on native Linux arm64 under Docker Desktop on Apple Silicon, with
+8 Docker CPUs. The results below are medians of five 60-second repetitions;
+all these headline runs had zero request errors. KV services each had four
+CPUs, 96 MiB configured cache RAM, and a 768 MiB container limit unless stated
+otherwise; the client used four separate CPUs.
+
+For 1 KiB cache hits over eight connections, the complete gRPC service was
+{comparison}
+
+| Service | Requests/s | p99 |
+|---|---:|---:|
+{rows}
+
+- **Data larger than RAM:** with a 128 MiB reusable set of 64 KiB objects and
+  a simulated 5 ms origin, adding a 512 MiB Navy file gave a median of
+  {value('hybrid', 'grpc_nvm', 'origins')} origin calls. CacheLib reached {value('hybrid', 'grpc_nvm')} objects/s with Navy versus
+  {value('hybrid', 'grpc')} with RAM alone; Memcached extstore reached
+  {value('hybrid', 'memcached_extstore')} under the same configured cache/file budgets.
+  At a fixed 1,500 arrivals/s, Navy needed a median of {value('offered', 'grpc_nvm', 'origins')} origin calls versus
+  {value('offered', 'grpc', 'origins')} for RAM-only CacheLib over 60 seconds. Configured cache RAM
+  is not total process memory: the report includes measured cgroup peaks.
+- **More RAM also works:** CacheLib gRPC, Redis, and Memcached avoided origin
+  misses with 192 MiB configured cache RAM and a 384 MiB container limit. Separate
+  384 MiB-limit Navy/extstore runs also met the full-hit objective. These
+  separately scheduled groups do not establish a hardware-cost advantage.
+- **HTTP objects:** for repeated 256 KiB objects, the gRPC service plus Python
+  HTTP adapter delivered {value('http', 'grpc_adapter')} objects/s (p99
+  {value('http', 'grpc_adapter', 'p99_ms', 3)} ms), versus NGINX's {value('http', 'nginx')} (p99
+  {value('http', 'nginx', 'p99_ms', 3)} ms). Each complete cache path had two CPUs and 768 MiB;
+  both avoided origin requests. This includes adapter overhead and measures
+  object delivery, not playback quality.
+
+These are shared laptop-VM results, not native amd64 or dedicated Linux
+performance claims. Navy device reads prove logical file-tier use; Docker's
+VM and host page caches prevent a physical SSD latency or endurance claim.
+Origin delay is simulated, and none of these comparisons enables persistence,
+replication, compression, authentication, or TLS."""
+
+
+def replace_readme_headlines(readme, rendered):
+    if readme.count(README_BEGIN) != 1 or readme.count(README_END) != 1:
+        raise ValueError("README must contain exactly one generated release-headlines block")
+    before, rest = readme.split(README_BEGIN)
+    if README_END not in rest:
+        raise ValueError("README release-headlines markers are out of order")
+    _, after = rest.split(README_END)
+    return before + README_BEGIN + "\n" + rendered + "\n" + README_END + after
 
 
 def render(runs, results):
@@ -87,7 +180,9 @@ def render(runs, results):
               "checks include key identity. Closed-loop latency omits requests that could have arrived while a worker "
               "was blocked. Offered-load latency includes scheduled-arrival queueing, and dropped arrivals remain visible. "
               "One operation is one object; batch latency is per 16-object batch/window. Medians below summarize separate "
-              "runs, including their per-run p99s; latency samples are never pooled.",
+              "runs, including their per-run p99s; latency samples are never pooled. Closed-loop absolute origin counts "
+              "reflect different completed request counts; use hit ratios or the equal-demand offered-load group for origin comparisons. "
+              "RAM192 and flash384 objective modes ran as separate series with shuffled engine order inside each; cross-series rates are descriptive.",
               "", "A KV origin miss simulates a fixed 1, 5 or 20 ms wait before filling the cache; HTTP uses a separate "
               "local origin with a 5 ms sleep. These are different origin models. All current HTTP runs use connection "
               "reuse and NGINX upstream keepalive. File tiers traverse Docker Desktop and host page caches: these results "
@@ -102,7 +197,7 @@ def render(runs, results):
         all_rows[name] = rows
         validation = validations[name]
         lines += ["", f"## {TITLES[name]}", "",
-                  f"{spec['reps']} repetitions × {spec['seconds']} seconds per mode/case. "
+                  f"{spec['reps']} {'repetition' if spec['reps'] == 1 else 'repetitions'} × {spec['seconds']} seconds per mode/case. "
                   f"[{len(rows)}/{len(expected_runs(spec))} result rows]({relative(results / name / 'runs.csv')}); "
                   f"[summary]({relative(results / name / 'summary.json')}); "
                   f"[raw manifest]({relative(runs / name / 'manifest.json')}).",
@@ -113,9 +208,9 @@ def render(runs, results):
                 selected = [r for r in rows if r["case"] == case and r["engine"] == engine]
                 hit, memory = median(selected, "hit_ratio"), median(selected, "server_memory_peak_bytes")
                 cells = [f"`{case}` / {LABELS[engine]}", str(len(selected)), number(median(selected, "objects_s")),
-                         number(median(selected, "p99_ms"), 3), number(hit*100 if hit is not None else None, 1)+"%",
-                         number(median(selected, "origins")), number(median(selected, "server_cpu_us_per_object"), 1),
-                         number(memory/1048576 if memory is not None else None, 1),
+                         number(median(selected, "p99_ms"), 3), percent(hit),
+                         number(median(selected, "origins")), ("—" if engine == "origin_direct" else number(median(selected, "server_cpu_us_per_object"), 1)),
+                         ("—" if engine == "origin_direct" else number(memory/1048576 if memory is not None else None, 1)),
                          f"{sum(int(r['errors']) for r in selected):,} / {sum(int(r.get('dropped_arrivals', 0)) for r in selected):,}"]
                 lines.append("| " + " | ".join(cells) + " |")
         notes = validation["problems"] + validation["claim_limitations"] + validation["observations"]
@@ -133,6 +228,7 @@ def render(runs, results):
                       "Its startup results are not steady-state rates. A changing hot set or one-pass trace tests reuse, not playback."]
         if name == "http-onepass":
             lines += ["", "Direct origin has no allocated cache path and is a reference, not an equal-resource cache comparison. "
+                      "Cache-path CPU/memory are not applicable; measured origin CPU/memory remain in the CSV. "
                       "NGINX's asynchronous cleanup can temporarily exceed its configured 512 MiB file limit; allocated bytes are retained in the CSV."]
     lines += ["", "## Observed comparisons", ""]
     def result(name, engine, field):
@@ -178,15 +274,21 @@ def main():
     parser.add_argument("--runs", type=pathlib.Path, default=ROOT / DEFAULT_RUNS)
     parser.add_argument("--results", type=pathlib.Path, default=ROOT / DEFAULT_RESULTS)
     parser.add_argument("--report", type=pathlib.Path, default=REPORT)
+    parser.add_argument("--readme", type=pathlib.Path, default=ROOT / "README.md")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     rendered = render(args.runs.resolve(), args.results.resolve())
+    readme = args.readme.read_text()
+    rendered_readme = replace_readme_headlines(readme, readme_headlines(args.runs.resolve(), args.results.resolve()))
     if args.check:
         if args.report.read_text() != rendered:
             raise SystemExit("Release report differs from campaign/raw results; rerun renderer without --check")
-        print("Release report matches complete campaign and measured results")
+        if readme != rendered_readme:
+            raise SystemExit("README headlines differ from qualified campaign results; rerun renderer without --check")
+        print("Release report and README headlines match complete campaign and measured results")
     else:
         args.report.write_text(rendered)
+        args.readme.write_text(rendered_readme)
 
 
 if __name__ == "__main__":

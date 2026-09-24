@@ -42,6 +42,10 @@ python3 bench/strong/render_release_report.py
 python3 bench/strong/render_release_report.py --check
 ```
 
+The release renderer updates both `RELEASE-1.8.0.md` and the generated
+`release-headlines` block in the root README; CI checks both against the complete
+campaign. Historical generated blocks remain separate.
+
 The default raw root is `runs/release-1.8.0-20260924`; generated CSV/JSON/SVG
 files live in `release-1.8.0-results`. The complete campaign resolves the
 runtime, both clients, Redis, Valkey, Memcached, and NGINX to image IDs. It

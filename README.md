@@ -25,12 +25,11 @@ containers published to `ghcr.io/celikgo/cachelib-grpc-server`.
 
 ## Quickstart
 
-<!-- RELEASE_STATUS: finalize after qualification, before tagging; verify publication separately. -->
-**1.8.0 publication is pending.** The commands below target the release being
-qualified. Until it is published, use the [source build](#building-from-source)
-and substitute your local image name. Release notes, image digests, and
-qualification evidence will be available on the
-[GitHub releases page](https://github.com/celikgo/cachelib-grpc-server/releases).
+The commands below use **1.8.0**. See the
+[release notes and verification evidence](https://github.com/celikgo/cachelib-grpc-server/releases/tag/v1.8.0)
+for immutable image digests, local Docker build provenance, and platform checks.
+The arm64 build was tested natively on Apple Silicon; amd64 correctness was
+tested through emulation. Performance measurements below are arm64 only.
 
 Install Docker and [`grpcurl`](https://github.com/fullstorydev/grpcurl) first.
 These development examples publish ports on localhost. For shared deployments,
@@ -77,9 +76,54 @@ representation that `grpcurl` uses. Native clients send raw bytes.
 
 ## Performance
 
-The [1.8.0 release report](bench/strong/RELEASE-1.8.0.md) records the current
-qualification, exact image identities, raw runs, and comparison limitations.
-The [harness guide](bench/strong/README.md) provides reproduction commands.
+The [1.8.0 release report](bench/strong/RELEASE-1.8.0.md) records exact image
+identities, raw runs, and comparison limitations. The
+[harness guide](bench/strong/README.md) provides reproduction commands.
+
+### 1.8.0 release measurements
+
+<!-- BEGIN GENERATED RELEASE: release-headlines -->
+Measured on native Linux arm64 under Docker Desktop on Apple Silicon, with
+8 Docker CPUs. The results below are medians of five 60-second repetitions;
+all these headline runs had zero request errors. KV services each had four
+CPUs, 96 MiB configured cache RAM, and a 768 MiB container limit unless stated
+otherwise; the client used four separate CPUs.
+
+For 1 KiB cache hits over eight connections, the complete gRPC service was
+slower than the three comparison services:
+
+| Service | Requests/s | p99 |
+|---|---:|---:|
+| CacheLib gRPC 1.8.0 | 46,658 | 0.381 ms |
+| Redis | 126,735 | 0.120 ms |
+| Valkey | 126,375 | 0.121 ms |
+| Memcached | 104,111 | 0.136 ms |
+
+- **Data larger than RAM:** with a 128 MiB reusable set of 64 KiB objects and
+  a simulated 5 ms origin, adding a 512 MiB Navy file gave a median of
+  0 origin calls. CacheLib reached 16,553 objects/s with Navy versus
+  3,688 with RAM alone; Memcached extstore reached
+  44,326 under the same configured cache/file budgets.
+  At a fixed 1,500 arrivals/s, Navy needed a median of 0 origin calls versus
+  31,794 for RAM-only CacheLib over 60 seconds. Configured cache RAM
+  is not total process memory: the report includes measured cgroup peaks.
+- **More RAM also works:** CacheLib gRPC, Redis, and Memcached avoided origin
+  misses with 192 MiB configured cache RAM and a 384 MiB container limit. Separate
+  384 MiB-limit Navy/extstore runs also met the full-hit objective. These
+  separately scheduled groups do not establish a hardware-cost advantage.
+- **HTTP objects:** for repeated 256 KiB objects, the gRPC service plus Python
+  HTTP adapter delivered 2,745 objects/s (p99
+  5.881 ms), versus NGINX's 3,025 (p99
+  4.499 ms). Each complete cache path had two CPUs and 768 MiB;
+  both avoided origin requests. This includes adapter overhead and measures
+  object delivery, not playback quality.
+
+These are shared laptop-VM results, not native amd64 or dedicated Linux
+performance claims. Navy device reads prove logical file-tier use; Docker's
+VM and host page caches prevent a physical SSD latency or endurance claim.
+Origin delay is simulated, and none of these comparisons enables persistence,
+replication, compression, authentication, or TLS.
+<!-- END GENERATED RELEASE: release-headlines -->
 
 ### Historical 1.6.0 measurements
 
@@ -108,18 +152,9 @@ serialization, copying, and cache lookup. This is not a Redis comparison.
 These are laptop-VM numbers for the older 1.6.0 image. They should not be
 extrapolated to dedicated Linux hardware or 1.8.0. The
 [September 23 candidate report](bench/strong/REPORT.md) and
-[earlier investigation](bench/investigation/REPORT.md) keep source versions,
-image identities, and environments separate. In the repeated 1 KiB,
-eight-connection September 23, 2026 candidate test, Redis was faster in all five
-paired 60-second repetitions; see that archived report for the full workload and
-resource conditions.
-With a 128 MiB reusable set and only 96 MiB configured cache RAM, the
-verified Navy tier avoided origin misses in a simulated 5 ms origin test;
-Memcached extstore was faster on that flash-backed trace, and Redis was
-faster when allowed enough RAM to hold the set. The report also measures
-HTTP media-object delivery against NGINX and separates the Python adapter
-cost from the CacheLib service. These statements describe that candidate
-campaign; use the release report above for the freshly qualified artifact.
+[earlier investigation](bench/investigation/REPORT.md) remain separate
+historical records; their source versions, images, and environments differ
+from the release measurements above.
 
 ---
 
@@ -198,12 +233,15 @@ Flags are passed to the container as arguments.
 > key the ceiling is 4,194,271 bytes, and raising `--max_item_size` above
 > 4 MiB changes nothing. Below the slab ceiling the flag is exact: with
 > `--max_item_size=65536`, a 65,536-byte value stores and a 65,537-byte one
-> does not. An oversized value comes back as `success=false`.
+> does not. An oversized value that reaches the handler returns
+> `success=false`.
 
 The gRPC message limit applies to the **whole serialized request or response**:
-`--max_item_size + 1024` bytes, or 4,195,328 bytes by default. A batch of
-individually valid values can exceed it and fail with `RESOURCE_EXHAUSTED`.
-Use smaller batches, and configure the corresponding limits in your client.
+`--max_item_size + 1024` bytes, or 4,195,328 bytes by default. A unary `Set`
+request or a batch can exceed it and fail with `RESOURCE_EXHAUSTED` before the
+handler processes it; individually valid values can also produce an oversized
+batch response. Use smaller values/batches, handle both application responses
+and RPC errors, and configure the corresponding limits in your client.
 Keys are limited to 255 bytes. TTLs use whole seconds; the current handlers
 narrow positive signed TTLs to 32 bits without a range check. Use nonnegative,
 bounded TTLs rather than treating the protobuf `int64` field as an unlimited

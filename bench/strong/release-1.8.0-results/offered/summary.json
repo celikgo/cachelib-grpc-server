@@ -1,0 +1,220 @@
+{
+  "source": "bench/strong/runs/release-1.8.0-20260924/offered",
+  "kind": "kv",
+  "groups": {
+    "offered_origin_64k_1500/grpc": {
+      "n": 5,
+      "medians": {
+        "objects_s": 1499.8771346966946,
+        "payload_mib_s": 60.626246328959546,
+        "p50_ms": 1.218892,
+        "p95_ms": 7.119707,
+        "p99_ms": 7.627603,
+        "p999_ms": 8.081503,
+        "hit_ratio": 0.6467372584749058,
+        "byte_hit_ratio": 0.6467372584749058,
+        "origins": 31794,
+        "origin_bytes": 2083651584,
+        "origin_bytes_avoided": 3814653952,
+        "origin_per_1000_gets": 353.26274152509416,
+        "server_cpu_us_per_object": 209.2506972144754,
+        "server_memory_current_bytes": 117952512,
+        "server_memory_peak_bytes": 123813888,
+        "client_cpu_s": 17.951137,
+        "client_memory_peak_bytes": 34406400,
+        "evictions_delta": 31439,
+        "cache_item_count_after": 1325,
+        "cache_used_bytes_after": 96466624,
+        "nvm_hits_delta": 0,
+        "nvm_device_bytes_read_delta": 0,
+        "nvm_device_bytes_written_delta": 0,
+        "cgroup_io_rbytes_delta": 0,
+        "cgroup_io_wbytes_delta": 0,
+        "cgroup_io_rios_delta": 0,
+        "cgroup_io_wios_delta": 0,
+        "flash_hits": 0,
+        "inferred_dram_hits": 58207,
+        "flash_hit_ratio": 0,
+        "inferred_dram_hit_ratio": 0.6467372584749058,
+        "extstore_objects_read_delta": 0,
+        "extstore_bytes_written_delta": 0,
+        "flash_file_allocated_bytes": 0
+      },
+      "range_objects_s": [
+        1499.8601660074348,
+        1499.8928758829504
+      ],
+      "bootstrap95_median_objects_s": [
+        1499.8601660074348,
+        1499.8928758829504
+      ],
+      "repetitions": [
+        "r0",
+        "r1",
+        "r2",
+        "r3",
+        "r4"
+      ],
+      "errors": 0
+    },
+    "offered_origin_64k_1500/grpc_nvm": {
+      "n": 5,
+      "medians": {
+        "objects_s": 1499.99752642323,
+        "payload_mib_s": 93.74984540145188,
+        "p50_ms": 0.748916,
+        "p95_ms": 1.6685939999999997,
+        "p99_ms": 1.912548,
+        "p999_ms": 2.160644,
+        "hit_ratio": 1.0,
+        "byte_hit_ratio": 1.0,
+        "origins": 0,
+        "origin_bytes": 0,
+        "origin_bytes_avoided": 5898305536,
+        "origin_per_1000_gets": 0.0,
+        "server_cpu_us_per_object": 237.16298707792134,
+        "server_memory_current_bytes": 261066752,
+        "server_memory_peak_bytes": 282611712,
+        "client_cpu_s": 15.637257,
+        "client_memory_peak_bytes": 28389376,
+        "evictions_delta": 31610,
+        "cache_item_count_after": 1325,
+        "cache_used_bytes_after": 96466624,
+        "nvm_hits_delta": 31610,
+        "nvm_device_bytes_read_delta": 2167296000,
+        "nvm_device_bytes_written_delta": 0,
+        "cgroup_io_rbytes_delta": 0,
+        "cgroup_io_wbytes_delta": 0,
+        "cgroup_io_rios_delta": 0,
+        "cgroup_io_wios_delta": 0,
+        "flash_hits": 31610,
+        "inferred_dram_hits": 58391,
+        "flash_hit_ratio": 0.3512183197964467,
+        "inferred_dram_hit_ratio": 0.6487816802035533,
+        "extstore_objects_read_delta": 0,
+        "extstore_bytes_written_delta": 0,
+        "flash_file_allocated_bytes": 536870912
+      },
+      "range_objects_s": [
+        1499.981163287517,
+        1500.0119899292845
+      ],
+      "bootstrap95_median_objects_s": [
+        1499.981163287517,
+        1500.0119899292845
+      ],
+      "repetitions": [
+        "r0",
+        "r1",
+        "r2",
+        "r3",
+        "r4"
+      ],
+      "errors": 0
+    },
+    "offered_origin_64k_1500/memcached_extstore": {
+      "n": 5,
+      "medians": {
+        "objects_s": 1499.99516293601,
+        "payload_mib_s": 93.74017329196596,
+        "p50_ms": 0.681703,
+        "p95_ms": 1.388396,
+        "p99_ms": 1.61464,
+        "p999_ms": 1.8083019999999999,
+        "hit_ratio": 0.9999000011110988,
+        "byte_hit_ratio": 0.9999000011110988,
+        "origins": 9,
+        "origin_bytes": 589824,
+        "origin_bytes_avoided": 5897715712,
+        "origin_per_1000_gets": 0.09999888890123443,
+        "server_cpu_us_per_object": 68.97151142765081,
+        "server_memory_current_bytes": 162406400,
+        "server_memory_peak_bytes": 163442688,
+        "client_cpu_s": 8.211872,
+        "client_memory_peak_bytes": 13148160,
+        "evictions_delta": 0,
+        "cache_item_count_after": 2048,
+        "cache_used_bytes_after": 134415274,
+        "nvm_hits_delta": 0,
+        "nvm_device_bytes_read_delta": 0,
+        "nvm_device_bytes_written_delta": 0,
+        "cgroup_io_rbytes_delta": 0,
+        "cgroup_io_wbytes_delta": 0,
+        "cgroup_io_rios_delta": 0,
+        "cgroup_io_wios_delta": 0,
+        "extstore_objects_read_delta": 30334,
+        "extstore_bytes_read_delta": 1990878125,
+        "extstore_bytes_written_delta": 1312657,
+        "flash_file_allocated_bytes": 42074112
+      },
+      "range_objects_s": [
+        1499.9909182475615,
+        1500.0127794835496
+      ],
+      "bootstrap95_median_objects_s": [
+        1499.9909182475615,
+        1500.0127794835496
+      ],
+      "repetitions": [
+        "r0",
+        "r1",
+        "r2",
+        "r3",
+        "r4"
+      ],
+      "errors": 0
+    },
+    "offered_origin_64k_1500/redis": {
+      "n": 5,
+      "medians": {
+        "objects_s": 1499.87312603374,
+        "payload_mib_s": 54.738435707400356,
+        "p50_ms": 1.25447,
+        "p95_ms": 7.244063,
+        "p99_ms": 7.667481,
+        "p999_ms": 8.099407,
+        "hit_ratio": 0.5839157342696192,
+        "byte_hit_ratio": 0.5839157342696192,
+        "origins": 37448,
+        "origin_bytes": 2454192128,
+        "origin_bytes_avoided": 3444113408,
+        "origin_per_1000_gets": 416.08426573038076,
+        "server_cpu_us_per_object": 58.157442695081166,
+        "server_memory_current_bytes": 103739392,
+        "server_memory_peak_bytes": 104419328,
+        "client_cpu_s": 9.269258,
+        "client_memory_peak_bytes": 12861440,
+        "evictions_delta": 36999,
+        "cache_used_bytes_after": 99818656,
+        "nvm_hits_delta": 0,
+        "nvm_device_bytes_read_delta": 0,
+        "nvm_device_bytes_written_delta": 0,
+        "cgroup_io_rbytes_delta": 0,
+        "cgroup_io_wbytes_delta": 0,
+        "cgroup_io_rios_delta": 0,
+        "cgroup_io_wios_delta": 0,
+        "extstore_objects_read_delta": 0,
+        "extstore_bytes_written_delta": 0,
+        "flash_file_allocated_bytes": 0
+      },
+      "range_objects_s": [
+        1499.8534694354792,
+        1499.8995915290816
+      ],
+      "bootstrap95_median_objects_s": [
+        1499.8534694354792,
+        1499.8995915290816
+      ],
+      "repetitions": [
+        "r0",
+        "r1",
+        "r2",
+        "r3",
+        "r4"
+      ],
+      "errors": 0
+    }
+  },
+  "failed_runs": [],
+  "method": "Per-run p50/p95/p99/p999 are not pooled. Group medians use run values; 95% intervals are 10,000 seeded bootstrap resamples of run medians when n>=5. Small-n bootstrap intervals are descriptive, not a guarantee of coverage."
+}

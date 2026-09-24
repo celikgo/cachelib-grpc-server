@@ -1,0 +1,11 @@
+usage_usec 208624043
+user_usec 91985666
+system_usec 116638377
+nice_usec 0
+nr_periods 776
+nr_throttled 0
+throttled_usec 0
+nr_bursts 0
+burst_usec 0
+25833472
+33165312

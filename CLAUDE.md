@@ -86,8 +86,8 @@ that the current source passed. There is no qualified full-dependency TSan job â
 - Historical 1.6.0 tables are rendered from `bench/results-summary.json`;
   `python3 bench/render.py --check` fails CI if their generated blocks drift. Archived
   September 23 candidate tables use `bench/strong/render_report_tables.py --check`;
-  the fresh release report uses `bench/strong/render_release_report.py --check` after its
-  complete campaign. Preserve separate versions, image identities, and environments. Regenerate
+  the fresh release report and README headline block use
+  `bench/strong/render_release_report.py --check` after the complete campaign. Preserve separate versions, image identities, and environments. Regenerate
   tables from measured evidence; do not relabel old runs as current release measurements.
 - `proto/cache.proto` is a published wire contract. Never renumber or reuse a field number,
   never change a field's type. Intentional incompatible semantics need a **new RPC** â€”

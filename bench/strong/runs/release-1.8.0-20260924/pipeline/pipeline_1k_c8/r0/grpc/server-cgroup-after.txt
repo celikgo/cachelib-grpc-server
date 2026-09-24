@@ -1,0 +1,11 @@
+usage_usec 116865425
+user_usec 48999651
+system_usec 67865773
+nice_usec 0
+nr_periods 371
+nr_throttled 0
+throttled_usec 0
+nr_bursts 0
+burst_usec 0
+25444352
+32940032

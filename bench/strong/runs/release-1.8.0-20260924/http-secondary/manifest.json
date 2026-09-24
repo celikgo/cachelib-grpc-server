@@ -1,0 +1,85 @@
+{
+  "utc": "2026-09-24T06:05:34.881661+00:00",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "docker": {
+    "Architecture": "aarch64",
+    "CgroupVersion": "2",
+    "KernelVersion": "7.0.12-linuxkit",
+    "OperatingSystem": "Docker Desktop",
+    "ServerVersion": "29.8.0"
+  },
+  "git_commit": "6a1f5a00b47f0ce1ec1ba429308017830d993ed7",
+  "git_status": "?? bench/strong/release-1.8.0-results/\n?? bench/strong/runs/release-1.8.0-20260924/\n",
+  "runtime_source_sha256": "f41ed4c752afeb028543a7f8a4a4d443175c490f65c507f2e4dac0bcb4199fcf",
+  "nginx_config_source": "bench/strong/nginx.conf",
+  "nginx_config_sha256": "ecd5844381ccf2119c6915527add2e1353758a5d933b3c12df8cce9b57636529",
+  "adapter_source": "bench/strong/http_service.py",
+  "adapter_source_sha256": "011e52f31279eb9299dbd1d224346d6a4197b70997778d59b4528be68c41550b",
+  "images": {
+    "sha256:959aa69a7ee0cac2f584a8b3603e19fd8eddde4824d628459be662162f67035e": {
+      "id": "sha256:959aa69a7ee0cac2f584a8b3603e19fd8eddde4824d628459be662162f67035e",
+      "repo_digests": [],
+      "architecture": "arm64",
+      "labels": {
+        "io.celikgo.cachelib.upstream.repository": "https://github.com/facebook/CacheLib.git",
+        "io.celikgo.cachelib.upstream.revision": "2aa2afbe97deadfb00f15260b26b566354c57a78",
+        "org.opencontainers.image.description": "A standalone gRPC server for Meta's CacheLib: 19 RPCs over a Redis-style key/value surface, on a hybrid DRAM+SSD cache.",
+        "org.opencontainers.image.documentation": "https://github.com/celikgo/cachelib-grpc-server/blob/main/README.md",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.revision": "23147ea09e38a020a1bdebddb52bfda65128f65b",
+        "org.opencontainers.image.source": "https://github.com/celikgo/cachelib-grpc-server",
+        "org.opencontainers.image.title": "cachelib-grpc-server",
+        "org.opencontainers.image.version": "1.8.0"
+      }
+    },
+    "sha256:7f7dcd27f920b22e980508bd5009b452e3d30b68c1041aa82e98e471d367db03": {
+      "id": "sha256:7f7dcd27f920b22e980508bd5009b452e3d30b68c1041aa82e98e471d367db03",
+      "repo_digests": [
+        "nginx@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de"
+      ],
+      "architecture": "arm64",
+      "labels": {
+        "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+      }
+    },
+    "sha256:cd1ea0279f292e54b9dad180287c800fcc3dd9e72992f6f2efcbc3f88590fccc": {
+      "id": "sha256:cd1ea0279f292e54b9dad180287c800fcc3dd9e72992f6f2efcbc3f88590fccc",
+      "repo_digests": [],
+      "architecture": "arm64",
+      "labels": null
+    },
+    "sha256:3753d36c934906544a046fe0f66066a0c65351887e968c98a4bc7fe850d80c72": {
+      "id": "sha256:3753d36c934906544a046fe0f66066a0c65351887e968c98a4bc7fe850d80c72",
+      "repo_digests": [],
+      "architecture": "arm64",
+      "labels": null
+    }
+  },
+  "configuration": {
+    "grpc_image": "sha256:959aa69a7ee0cac2f584a8b3603e19fd8eddde4824d628459be662162f67035e",
+    "go_client_image": "sha256:cd1ea0279f292e54b9dad180287c800fcc3dd9e72992f6f2efcbc3f88590fccc",
+    "utility_image": "sha256:3753d36c934906544a046fe0f66066a0c65351887e968c98a4bc7fe850d80c72",
+    "nginx_image": "sha256:7f7dcd27f920b22e980508bd5009b452e3d30b68c1041aa82e98e471d367db03",
+    "output": "/private/tmp/cachelib-release-1.8.0-local/bench/strong/runs/release-1.8.0-20260924/http-secondary",
+    "cases": "recent_replay_256k_c8,repeated_1m_c8",
+    "reps": 2,
+    "seconds": 30,
+    "warmup": 15,
+    "nginx_config": "/private/tmp/cachelib-release-1.8.0-local/bench/strong/runs/release-1.8.0-20260924/http-secondary/nginx-config.evaluated.conf",
+    "adapter_source": "bench/strong/http_service.py",
+    "adapter_image": "sha256:3753d36c934906544a046fe0f66066a0c65351887e968c98a4bc7fe850d80c72"
+  },
+  "cache_path_budget": {
+    "cpus": 2,
+    "memory_mib": 768,
+    "cpuset": "0-1"
+  },
+  "grpc_path_split": {
+    "grpc": "1 CPU/384 MiB",
+    "Python HTTP adapter": "1 CPU/384 MiB"
+  },
+  "origin": "simulated 5 ms, separate 2 CPU/512 MiB container on CPUs 6-7",
+  "nginx_disk_cache": "512 MiB max, bind-mounted Docker Desktop filesystem; page cache not disabled",
+  "client": "separate 4 CPU/1024 MiB cgroup on CPUs 2-5, compiled Go, full body verification",
+  "origin_direct": "one-pass reference only; no cache path and no equal-resource cache claim"
+}

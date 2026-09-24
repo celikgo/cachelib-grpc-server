@@ -6,15 +6,33 @@ repository. Published images live at
 [`ghcr.io/celikgo/cachelib-grpc-server`][pkg]; a source tag or changelog entry
 alone does not mean an image was published. Publication exceptions are noted below.
 
-## [1.8.0] — unreleased
+## [1.8.0] — 2026-09-24
 
-<!-- RELEASE_STATUS: finalize release date and evidence after qualification, before tagging. -->
-Local Docker qualification and publication are pending. The
-[release guide](docs/releasing.md) defines the checks and the
-[release report](bench/strong/RELEASE-1.8.0.md) identifies measured artifacts.
+[Release notes and assets](https://github.com/celikgo/cachelib-grpc-server/releases/tag/v1.8.0)
+include image digests and local Docker provenance. The
+[release report](bench/strong/RELEASE-1.8.0.md) identifies measured artifacts;
+the [release guide](docs/releasing.md) documents publication and verification.
 
 Correctness release addressing cache startup, numeric-value corruption,
 premature counter/CAS expiry, and `Scan` denial of service.
+
+### Qualification
+
+- Native Linux arm64 under Docker Desktop on Apple Silicon passed both CTest
+  binaries normally (77.18 s) and with ASan/UBSan (136.92 s). Emulated amd64
+  passed both normal test binaries (45.59 s); no amd64 sanitizer or native
+  amd64 performance qualification is claimed.
+- The suite registers 158 GoogleTest cases: 91 manager and 67 service cases.
+  CTest reports two executable-level passes and does not enumerate executed
+  cases or conditional NVM skips. The runtime smoke independently verified
+  RAM operations, request limits, Docker/gRPC health, Navy eviction, correct
+  flash reads, and TTL expiry on both architectures.
+- GitHub CI passed for campaign source `6a1f5a0`. Native arm64 benchmarks retain
+  measured image identities and five repetitions per headline comparison.
+  All 195 runs across 15 groups passed correctness and completeness checks,
+  with zero request errors. The 105 headline runs qualified. The exploratory
+  80,000/s gRPC overload probe retained 134,902 dropped arrivals; cold and
+  one-pass results and resource-budget limitations remain in the report.
 
 **The previously published hybrid DRAM+SSD tier did not start.** Running the command in the
 README's "Hybrid DRAM + SSD" section against the earlier 1.6.0 image exits at
@@ -96,8 +114,9 @@ authentication.
   flash reads, counters, and TTL. The release workflow now tests each native
   architecture before push, verifies the immutable versioned digest on both
   architectures, and promotes `latest` only after those checks.
-- Expanded tests, up from 35 in the original suite. Release evidence records
-  the executed case count. First coverage for `SetNX`, `Increment`, `Decrement`,
+- Expanded to 158 registered GoogleTest cases, up from 35 in the original
+  suite; registered counts include conditionally skippable cases. First coverage
+  for `SetNX`, `Increment`, `Decrement`,
   `Incr`, `CompareAndSwap`, `Touch`, `GetTTL`, `MultiDelete`, `Flush`,
   `Pipeline` and the hybrid tier.
 - A nightly ASan + UBSan run, and `docs/sanitizers.md` stating what it covers

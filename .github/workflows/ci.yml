@@ -46,15 +46,14 @@ jobs:
       - name: Verify LICENSE and NOTICE present
         run: test -f LICENSE && test -f NOTICE
 
-      # A published performance number that nothing regenerates goes stale
-      # silently. The tables in BENCHMARKS.md and README.md, and the one figure
-      # quoted in prose, are rendered from bench/results-summary.json -- the
-      # committed measurement. This fails the build if the markdown has drifted
-      # from it, in about a second, on every push.
+      # Keep historical 1.6.0, September 23 candidate, and fresh release
+      # tables tied to their separate committed measurements. The release
+      # renderer also checks the current README headline block.
       - name: Benchmark tables match the committed measurement
         run: |
           python3 bench/render.py --check
           python3 bench/strong/render_report_tables.py --check
+          python3 bench/strong/render_release_report.py --check
 
       - name: Release campaign validation rules
         run: python3 bench/strong/test_release_campaign.py
