@@ -47,8 +47,8 @@ namespace fuzz {
 namespace {
 
 // One cache for the whole process. Constructing a CacheAllocator costs far more
-// than an iteration, so it is built once and reused. That makes the target
-// stateful, which is why the corpus is replayed in order rather than shuffled.
+// than an iteration, so it is built once and reused. Value state is reset
+// before each input, so a crasher does not depend on earlier corpus files.
 CacheManager* sharedCache() {
   static CacheManager* manager = []() -> CacheManager* {
     CacheConfig config;
@@ -56,6 +56,10 @@ CacheManager* sharedCache() {
     config.cacheSize = 64 * 1024 * 1024;
     config.enableNvm = false;
     config.maxItemSize = 64 * 1024;
+    // The target holds at most four keys. Use the minimum supported table so
+    // timing exercises the parser and matcher, rather than traversing 2^18
+    // mostly empty buckets under sanitizer instrumentation.
+    config.hashBucketsPower = 16;
     auto* m = new CacheManager(config);
     if (!m->initialize()) {
       delete m;
@@ -70,6 +74,14 @@ CacheManager* sharedCache() {
 // one iteration stays fast.
 constexpr size_t kMaxPatternBytes = 64;
 
+// One PipelineRequest can mutate at most one key. Removing that key and
+// restoring the fixed fixtures resets the next input without a full-table
+// flush or expensive CacheAllocator reconstruction.
+std::string& lastSetKey() {
+  static std::string key;
+  return key;
+}
+
 }  // namespace
 
 bool CacheIsUsable() {
@@ -77,18 +89,36 @@ bool CacheIsUsable() {
   return cache != nullptr && cache->isReady();
 }
 
-void FuzzOneInput(const uint8_t* data, size_t size) {
+bool PrepareOneInput() {
   auto* cache = sharedCache();
   if (cache == nullptr || !cache->isReady()) {
-    return;
+    return false;
+  }
+  if (!lastSetKey().empty()) {
+    cache->remove(lastSetKey());
+    lastSetKey().clear();
+  }
+  // In particular, keep the long nonmatching key present for *a*a*...b. The
+  // original corpus deleted its only key before reaching these stressors.
+  return cache->set("fuzz:key", "fuzz-value") &&
+         cache->set(std::string(255, 'a'), "long-key") &&
+         cache->set(std::string("a\0b", 3), "binary-key");
+}
+
+FuzzInputResult FuzzPreparedInput(const uint8_t* data, size_t size) {
+  FuzzInputResult result;
+  auto* cache = sharedCache();
+  if (cache == nullptr || !cache->isReady()) {
+    return result;
   }
 
   ::cachelib::grpc::PipelineRequest request;
-  if (request.ParseFromArray(data, static_cast<int>(size))) {
+  if (size <= INT_MAX && request.ParseFromArray(data, static_cast<int>(size))) {
+    result.parsed = true;
     switch (request.operation_case()) {
       case ::cachelib::grpc::PipelineRequest::kGet:
         if (!request.get().key().empty()) {
-          cache->get(request.get().key());
+          result.operationSucceeded = cache->get(request.get().key()).found;
         }
         break;
       case ::cachelib::grpc::PipelineRequest::kSet: {
@@ -97,18 +127,19 @@ void FuzzOneInput(const uint8_t* data, size_t size) {
           const int64_t ttl = set.ttl_seconds();
           const uint32_t ttlSeconds =
               (ttl > 0 && ttl <= UINT_MAX) ? static_cast<uint32_t>(ttl) : 0;
-          cache->set(set.key(), set.value(), ttlSeconds);
+          lastSetKey() = set.key();
+          result.operationSucceeded = cache->set(set.key(), set.value(), ttlSeconds);
         }
         break;
       }
       case ::cachelib::grpc::PipelineRequest::kDelete:
         if (!request.delete_().key().empty()) {
-          cache->remove(request.delete_().key());
+          result.operationSucceeded = cache->remove(request.delete_().key());
         }
         break;
       case ::cachelib::grpc::PipelineRequest::kExists:
         if (!request.exists().key().empty()) {
-          cache->exists(request.exists().key());
+          result.operationSucceeded = cache->exists(request.exists().key());
         }
         break;
       default:
@@ -121,7 +152,15 @@ void FuzzOneInput(const uint8_t* data, size_t size) {
   const std::string pattern(
       reinterpret_cast<const char*>(data),
       size > kMaxPatternBytes ? kMaxPatternBytes : size);
-  cache->scan(pattern, "", 16);
+  result.scanMatches = cache->scan(pattern, "", 16).keys.size();
+  return result;
+}
+
+FuzzInputResult FuzzOneInput(const uint8_t* data, size_t size) {
+  if (!PrepareOneInput()) {
+    return {};
+  }
+  return FuzzPreparedInput(data, size);
 }
 
 }  // namespace fuzz
