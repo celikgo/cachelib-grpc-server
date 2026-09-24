@@ -28,12 +28,20 @@ upstream copyright header.
 
 ## Verifying and regenerating
 
+From this repository's root:
+
 ```bash
-REF=$(grep -oE 'CACHELIB_REF=[0-9a-f]+' ../Dockerfile | cut -d= -f2)
-git clone https://github.com/facebook/CacheLib /tmp/cachelib
-git -C /tmp/cachelib checkout --detach "$REF"
-git -C /tmp/cachelib apply --check -v /path/to/patches/*.patch
+cachelib_patch_ref=$(sed -n 's/^ARG CACHELIB_REF=\([0-9a-f]\{40\}\)$/\1/p' Dockerfile)
+test -n "$cachelib_patch_ref"
+cachelib_patch_checkout=$(mktemp -d "${TMPDIR:-/tmp}/cachelib-patches.XXXXXX")
+git clone https://github.com/facebook/CacheLib "$cachelib_patch_checkout"
+git -C "$cachelib_patch_checkout" checkout --detach "$cachelib_patch_ref"
+git -C "$cachelib_patch_checkout" apply --check -v "$PWD"/patches/*.patch
 ```
+
+This leaves the temporary upstream checkout available for inspection. Applying
+the patches and running `getdeps.py --allow-system-packages list-deps cachelib`
+there additionally checks dependency-graph resolution, as CI does.
 
 To move to a newer upstream revision: bump `CACHELIB_REF`, run the check above,
 and if a patch no longer applies, re-cut it against the new revision rather than
@@ -41,19 +49,20 @@ force-fitting the old one.
 
 ## Why the pin sits where it does
 
-`CACHELIB_REF` is upstream main as of 2026-05-02 — the revision the last
-known-good published image (1.6.0) was built from. It is not the newest
-upstream commit, deliberately: later revisions bump mvfst to a version that
-does not compile under GCC 13 on Ubuntu 24.04, failing about 30 minutes into
-the build with
+`CACHELIB_REF` retains the upstream revision selected for the historical
+1.6.0 image on 2026-05-02. It is also the input to the 1.8.0 qualification;
+the release provenance records the exact commit. During the original pin
+investigation, newer revisions bumped mvfst to a version that failed under
+GCC 13 on Ubuntu 24.04 with
 
 ```
 error: default member initializer for 'quic::DatagramFlowManager::QueuedDatagram::enqueueTime'
        required before the end of its enclosing class
 ```
 
-That is an upstream/toolchain incompatibility, not something this repository
-introduces. Moving the pin forward means either waiting for upstream to fix
-mvfst, or moving the build image to a compiler that accepts it.
+That was an upstream/toolchain incompatibility. It does not establish that
+every later upstream revision is broken today. Evaluate a candidate pin with
+the current compiler, all three patches, dependency-graph checks, and the full
+test/runtime qualification before changing it.
 
 [up]: https://github.com/facebook/CacheLib

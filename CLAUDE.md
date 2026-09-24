@@ -22,17 +22,19 @@ result structs to proto fields. **`CacheManager`** holds all the real logic and 
 
 ## Build reality
 
-The **container build is the supported path**. It compiles gRPC v1.60.0, folly, fbthrift and
-CacheLib from source and takes roughly an hour (CI allows 180 minutes; a release arch build
-runs ~50 minutes).
+The **container build is the reference path**. It compiles gRPC v1.60.0, folly, fbthrift and
+CacheLib from source. Cold builds are expensive; duration depends on available CPUs, cached
+dependencies, network access, and whether the architecture is emulated.
 
 ```bash
 docker build -t cachelib-grpc-server .                        # runtime image
 docker build --target tester -t cachelib-grpc-server:test .   # build + run the unit tests
 ```
 
-`./build.sh` is a host build that **expects CacheLib already built** at `../opt/cachelib` plus
-gRPC/protobuf installed. It is not what CI runs; do not treat a `./build.sh` result as proof.
+`./build.sh` is a Linux host-build wrapper. It expects CacheLib already installed at
+`CACHELIB_PREFIX` (default `/opt/cachelib`) plus gRPC/Protobuf and CacheLib's dependencies.
+It extends `CMAKE_PREFIX_PATH`; see [CONTRIBUTING.md](CONTRIBUTING.md). A host-build pass is
+evidence for that host environment, not a substitute for container qualification.
 
 In the `Dockerfile`, the `COPY` of this repo's sources sits *after* the dependency and CacheLib
 builds, deliberately. Do not move it up — it puts an hour of compilation behind every
@@ -44,12 +46,14 @@ source-only edit.
 
 - `cache_manager_test` — `CacheManagerTest.cc`, `AtomicityTest.cc`, `TtlBoundaryTest.cc`,
   `ScanContractTest.cc`, `NvmHybridTest.cc`. Drives `CacheManager` directly, no gRPC.
-- `cache_service_test` — `CacheServiceTest.cc`, `PipelineTest.cc`, `ServiceContractTest.cc`.
-  Drives the service over `server_->InProcessChannel(...)`.
+- `cache_service_test` — `CacheServiceTest.cc`, `PipelineTest.cc`, `ServiceContractTest.cc`,
+  and the fuzz body/corpus replay under `tests/fuzz/`. Service suites use in-process
+  channels; Pipeline tests also exercise real streaming calls.
 
 Add new suites as **source files in an existing executable**, not as new executables — each
-extra executable relinks CacheLib, folly and fbthrift statically. Only `CacheManagerTest.cc`
-defines `main()`. Fixture classes, `TEST_F` suite names, and `CacheConfig::cacheName` values
+extra executable repeats the large dependency link. `CacheManagerTest.cc` defines the manager
+binary's `main()` and `CacheServiceTest.cc` defines the service binary's. Fixture classes,
+`TEST_F` suite names, and `CacheConfig::cacheName` values
 must be unique across a whole binary.
 
 The Dockerfile `tester` stage runs `ctest`, so both binaries execute. (It used to invoke
@@ -64,9 +68,10 @@ Iterating on tests without paying for a full image build: build `--target builde
 mount the working tree into it and rebuild only the server and tests (a couple of minutes
 instead of an hour).
 
-Sanitizers: `docker build --target sanitize .`, or `cmake -DSANITIZE=address,undefined`.
-The full suite takes ~150 s under ASan+UBSan. A nightly runs it. There is no TSan job on
-purpose — see `docs/sanitizers.md`, and do not add one without reading it first.
+Sanitizers: `docker build --target sanitize .`. A nightly workflow runs the same stage.
+Record the actual executed test counts and outcome; a configured workflow is not evidence
+that the current source passed. There is no qualified full-dependency TSan job — see
+[docs/sanitizers.md](docs/sanitizers.md) before proposing one.
 
 `tests/fuzz/` holds one fuzz body with two front ends: a corpus replay that runs inside
 `cache_service_test` on every build, and an `LLVMFuzzerTestOneInput` behind
@@ -78,12 +83,17 @@ purpose — see `docs/sanitizers.md`, and do not add one without reading it firs
   `proto/cache.proto` doc comments. Documented behaviour that the code does not have is a bug
   report, not a doc edit — the `MultiSet` empty-key caveat in the proto is the model for
   writing down a hole you are not fixing yet.
-- Published performance numbers are rendered from `bench/results-summary.json`;
-  `python3 bench/render.py --check` fails CI if the markdown drifts. Never hand-edit a number
-  in `BENCHMARKS.md` or `README.md`.
+- Historical 1.6.0 tables are rendered from `bench/results-summary.json`;
+  `python3 bench/render.py --check` fails CI if their generated blocks drift. Current
+  September 23 candidate tables use `bench/strong/render_report_tables.py --check`;
+  the fresh release report uses `bench/strong/render_release_report.py --check` after its
+  complete campaign. Preserve separate versions, image identities, and environments. Regenerate
+  tables from measured evidence; do not relabel old runs as current release measurements.
 - `proto/cache.proto` is a published wire contract. Never renumber or reuse a field number,
-  never change a field's type. A semantic change to an existing RPC means a **new RPC** —
-  `Incr` exists because changing `Increment`'s TTL behaviour would have broken callers.
+  never change a field's type. Intentional incompatible semantics need a **new RPC** —
+  `Incr` exists because replacing `Increment`'s TTL behavior would have broken callers.
+  Correcting an implementation defect to restore its documented contract stays in the
+  existing RPC and needs a regression test and changelog entry.
 - Every `*.cc`, `*.h`, `proto/cache.proto`, `CMakeLists.txt` and `docker-compose.yml` must keep
   the Meta Apache-2.0 header in its first 20 lines; CI's `proto` job enforces it.
 - C++20, `clang-format` with the repo `.clang-format` (Google, 2-space indent, 80 columns).
@@ -107,7 +117,9 @@ bench: generate the published tables from the committed measurement
 
 ## Version bumps
 
-Two sites, and **nothing in CI checks they agree** with each other or with the release tag:
-`kServerVersion` in `CacheManager.h` (reported by `Stats.version`, `--version`, and the
-`cachelib_info` metric) and `project(... VERSION ...)` in `CMakeLists.txt`. Bump both, and add
-a `CHANGELOG.md` entry.
+Bump `kServerVersion` in `CacheManager.h` (reported by `Stats.version`, `--version`, and the
+`cachelib_info` metric) and `project(... VERSION ...)` in `CMakeLists.txt`, then update the
+changelog and qualification report. The release workflow checks the source declarations,
+report heading, requested version, and tag. Runtime smoke verifies the reported version.
+Follow [docs/releasing.md](docs/releasing.md) for local Docker publication and its required
+provenance. `latest` identifies a verified published image, not the current source checkout.

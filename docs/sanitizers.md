@@ -8,9 +8,9 @@ One nightly job, [`sanitize`](../.github/workflows/nightly.yml), builds the
 Dockerfile's `sanitize` stage: the whole test suite compiled with
 `-fsanitize=address,undefined` and run through `ctest`.
 
-Only **this repository's translation units** are instrumented. gRPC, folly,
-fbthrift and CacheLib come from `getdeps.py` as uninstrumented static
-libraries. That is fine for these two sanitizers:
+Only **this repository's translation units** are instrumented. The separately
+built gRPC/Protobuf libraries and the CacheLib/getdeps dependency chain are
+not rebuilt with sanitizer instrumentation. This limits what the run proves:
 
 - **ASan**'s allocator and its `memcpy`/`memmove`/`strlen` interceptors are
   process-wide, so they apply to calls made from uninstrumented code as well.
@@ -20,24 +20,34 @@ libraries. That is fine for these two sanitizers:
 CacheLib is heavily templated, so a good deal of it *is* instrumented: anything
 that lives in a header and is expanded into `CacheManager.cc` or a test.
 
-Run it locally against a prebuilt `builder` image:
+Run it locally from the repository root:
 
 ```bash
 docker build --target sanitize .
 ```
 
-Or configure a sanitizer build directly:
+Docker reuses compatible cached dependency layers when available. Without
+that cache, the command first builds the full dependency chain.
+
+In an already provisioned Linux development environment, configure a separate
+build directory with the CacheLib and dependency prefixes:
 
 ```bash
-cmake -DBUILD_TESTS=ON -DSANITIZE=address,undefined ..
+cmake -S . -B build-sanitize -DBUILD_TESTS=ON -DSANITIZE=address,undefined \
+  -DCMAKE_PREFIX_PATH='/path/to/cachelib;/path/to/dependencies;/usr/local'
+cmake --build build-sanitize --parallel
+ctest --test-dir build-sanitize --output-on-failure
 ```
 
-Measured on an Apple M2 Max by building the `sanitize` stage itself — the same
-thing the nightly builds — **150 tests, 147 seconds**, on top of the dependency
-build. Sanitizers are not what makes this suite slow.
+<!-- RELEASE_SANITIZER_STATUS: replace with the final observed result and evidence link. -->
+The refreshed 1.8.0 sanitizer qualification is pending. The release evidence
+must record the exact source, architecture, executed GoogleTest case count,
+and result. CTest lists two executable-level tests; this is different from
+the number of individual GoogleTest cases. Earlier timing measurements do not
+establish the outcome or duration of a new build.
 
-That number is only reachable because the hash table is sized from the cache
-size. It used to be a fixed 2^25 buckets, and CacheLib's iterator is
+Hash-table sizing matters to sanitizer runtime. It used to be a fixed 2^25
+buckets, and CacheLib's iterator is
 header-inlined into our instrumented translation units, so every scan-based
 test walked 33.5 million instrumented bucket reads: one test ran for over an
 hour before that changed.
@@ -53,8 +63,8 @@ if you are chasing one).
 
 **Cannot**: see corruption *inside* a CacheLib slab. `SlabAllocator` takes its
 arena from `mmap`, not `malloc`, so there are no redzones between cached items.
-An item overrunning into its neighbour is invisible unless the write goes
-through an intercepted `memcpy` or runs past the end of the whole mapping.
+An item overrunning into its neighbour has no per-item poisoned boundary for
+ASan to detect, even when the copy passes through an intercepted `memcpy`.
 
 So this job is a lifetime checker for our own code. It is **not** a
 cache-corruption detector, and the README does not claim it is.
@@ -74,38 +84,40 @@ exist:
 
 2. **Upstream's own annotations are dead.** CacheLib marks its
    documented-benign races with `annotate_ignore_thread_sanitizer_guard`. Those
-   calls live in `libfolly.a`, which was built with folly's
+   calls live in the Folly dependency, which was built with folly's
    `kIsSanitizeThread == false`, so they compile to no-ops. Even the races
-   upstream has explicitly declared benign would be reported.
+   upstream has explicitly declared benign can therefore be reported.
 
 3. **Suppressions do not rescue it.** TSan suppresses a report if *any* frame
    matches, and nearly every stack here passes through `facebook::cachelib::`.
-   The suppression that silences the noise silences the signal. `called_from_lib:`
-   does not apply either, because folly and CacheLib are static archives, not
-   shared objects.
+   The suppression that silences the noise can also silence the signal. Broad
+   library suppressions can likewise hide defects in callers. Inspect the
+   actual linkage when evaluating any proposed suppression.
 
-Making TSan meaningful means rebuilding the dependency chain under
-`-fsanitize=thread`:
+Making TSan useful requires a compatible, consistently instrumented dependency
+chain and validation of any remaining reports. From a separate, patched
+CacheLib checkout, a starting experiment is:
 
 ```bash
 python3 ./build/fbcode_builder/getdeps.py build \
   --extra-cmake-defines '{"CMAKE_CXX_FLAGS": "-fsanitize=thread"}' cachelib
 ```
 
-That changes `CMAKE_CXX_FLAGS` in the *first* expensive layer, so no buildx
-cache is reusable and every run is a cold build of folly, fbthrift, gRPC and
-CacheLib. The Dockerfile already calls that "about an hour" uninstrumented;
-under TSan, plausibly two to four — nightly, every night. Whether folly and
-mvfst even compile clean under TSan at the current pin is unknown; nobody has
-tried.
+This is not a complete TSan build recipe: gRPC/Protobuf are built separately
+by the Dockerfile and need compatible instrumentation too. Changed compiler
+flags invalidate dependency build outputs. No working full-dependency TSan
+configuration is qualified at the current pin, and its build time is not
+measured here.
 
-Weighed against a concurrency surface that is **one `std::mutex` and five
-`std::atomic` counters**, that is not a good trade today. What guards that
-surface instead is
+The manager's read-modify-write operations use one `std::mutex`, and its five
+operation counters are atomic. Metrics serving, lifecycle handling, gRPC, and
+the cache engine also have concurrent behavior; this is not an inventory of
+every synchronization edge in the process. Targeted coverage for the manager is
 [`tests/AtomicityTest.cc`](../tests/AtomicityTest.cc): threads released
 simultaneously onto a single key, asserting exact outcomes — one SetNX winner,
 `Incr` results forming exactly `1..N` with no duplicates, exactly one
-`ttl_set`. A lost update fails those tests deterministically, without TSan.
+`ttl_set`. These tests detect incorrect outcomes in the exercised schedules;
+they do not prove the absence of every data race.
 
 Revisit if the locking gets more complicated than one mutex, or if upstream
 ships a TSan-instrumented build.
@@ -116,8 +128,8 @@ ships a TSan-instrumented build.
 fuzz body with two front ends.
 
 The **regression half** runs on every CI build: `FuzzCorpusReplayTest.cc`
-replays an embedded corpus through it inside `cache_service_test`, in about
-150 ms. No clang, no libFuzzer, no extra stage. Once a crasher is found it goes
+replays an embedded corpus through it inside `cache_service_test`.
+No clang, no libFuzzer, no extra stage. Once a crasher is found it goes
 in the corpus and cannot come back silently. The seeds are embedded rather than
 read from disk so the test cannot quietly replay zero inputs because a
 directory failed to copy into the image; set `CACHELIB_FUZZ_CORPUS` to a

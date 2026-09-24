@@ -24,10 +24,9 @@ It is a 40-character commit SHA, never a branch or tag, for two reasons:
 
 1. **Reproducibility.** Cloning `main` means rebuilding a release tag pulls whatever upstream is
    that day. Upstream can also move a tag.
-2. **Buildability.** The current pin is upstream `main` as of 2026-05-02 — "the last revision
-   that actually builds", the revision the last known-good published image (1.6.0) was built
-   from. It is deliberately *not* the newest commit: later upstream revisions bump mvfst to a
-   version that does not compile under GCC 13 on Ubuntu 24.04, failing ~30 minutes in with
+2. **Buildability.** The current pin was selected for the historical 1.6.0 image on
+   2026-05-02 and retained for 1.8.0 qualification. During that investigation, newer revisions
+   bumped mvfst to a version that failed under GCC 13 on Ubuntu 24.04 with
 
    ```
    error: default member initializer for
@@ -35,23 +34,23 @@ It is a 40-character commit SHA, never a branch or tag, for two reasons:
    required before the end of its enclosing class
    ```
 
-   That is an upstream/toolchain incompatibility, not something this repo introduces. Moving
-   past it means waiting for upstream to fix mvfst, or moving the build image to a compiler that
-   accepts it. **Check this first** — if the candidate revision still carries that mvfst bump,
-   stop; there is nothing to gain from a 30-minute failure.
+   Check the candidate revision and current compiler for that incompatibility before a full
+   build. A past failure does not establish that every newer revision fails today; upstream
+   fixes or a compiler change may resolve it.
 
-## The two patches
+## The three patches
 
 Applied with `git apply` to the pinned tree during the build, so a bad pin fails immediately and
-loudly instead of much later with a confusing error. Read `patches/README.md` before touching
-either.
+loudly instead of much later with a confusing error. Read
+[patches/README.md](../../../patches/README.md) before changing them.
 
 | Patch | Touches | Does |
 |---|---|---|
 | `0001-folly-disable-io-uring.patch` | `build/fbcode_builder/manifests/folly` | Removes `libaio` from `[dependencies.os=linux]` and adds `FOLLY_USE_IO_URING=OFF`, `Liburing_FOUND=OFF`, `LIBURING_FOUND=OFF` to `[cmake.defines]`. The Docker Desktop VM kernel does not expose the features folly probes for; the stock manifest yields a binary that fails at startup. |
 | `0002-cachelib-common-optional-targets.patch` | `cachelib/common/CMakeLists.txt` | Wraps three hard link targets in `if(TARGET …)`: folly's exception tracer trio, `FBThrift::thrift_dynamic_value`, and `magic_enum::magic_enum`. The exception tracer needs debug symbols and `libiberty` internals the slim build image does not carry. |
+| `0003-xz-download-url.patch` | `build/fbcode_builder/manifests/xz` | Uses the official `www.tukaani.org` endpoint for the same xz 5.2.5 archive, retaining and verifying its upstream SHA-256. |
 
-These are real diffs on purpose. They replaced whole-file copies taken from a tree ~450 commits
+These are real diffs on purpose. The first two replaced whole-file copies taken from a tree ~450 commits
 behind upstream; once the pin was added, the stale folly manifest still declared a
 `double-conversion` dependency upstream had removed and the build died with `ManifestNotFound`
 (`353d09d`). A diff cannot drift silently — it either applies or fails.
@@ -61,43 +60,49 @@ never widen the context to make it apply.
 
 ## Run the CI check locally, before pushing
 
-This is exactly what the CI `patches` job does, in ~20 seconds, without waiting on a build.
+This runs the same structural checks as CI's `patches` job without compiling the dependency
+chain. Use a fresh temporary checkout so an existing upstream tree is not disturbed.
 
 ```bash
 cd /path/to/cachelib-grpc-server
+set -eu
 
 # 1. Read the pin back out of the Dockerfile the same way CI does (this regex
 #    requires exactly 40 hex chars; if it prints nothing, your pin is malformed).
-REF=$(grep -oE 'ARG CACHELIB_REF=[0-9a-f]{40}' Dockerfile | cut -d= -f2); echo "$REF"
+cachelib_pin_ref=$(sed -n 's/^ARG CACHELIB_REF=\([0-9a-f]\{40\}\)$/\1/p' Dockerfile)
+test -n "$cachelib_pin_ref"
 
-# 2. Clone upstream at the pin.                                    (~1-2 min)
-git clone --quiet https://github.com/facebook/CacheLib.git /tmp/cachelib
-git -C /tmp/cachelib checkout --quiet --detach "$REF"
+# 2. Clone upstream at the pin.
+cachelib_pin_checkout=$(mktemp -d "${TMPDIR:-/tmp}/cachelib-pin.XXXXXX")
+git clone --quiet https://github.com/facebook/CacheLib.git "$cachelib_pin_checkout"
+git -C "$cachelib_pin_checkout" checkout --quiet --detach "$cachelib_pin_ref"
 
 # 3. Patches must apply cleanly.                                   (seconds)
-git -C /tmp/cachelib apply --check -v "$PWD"/patches/*.patch
+git -C "$cachelib_pin_checkout" apply --check -v "$PWD"/patches/*.patch
 
 # 4. Dependency graph must still resolve cachelib.                 (~1 min)
-git -C /tmp/cachelib apply "$PWD"/patches/*.patch
-(cd /tmp/cachelib && python3 ./build/fbcode_builder/getdeps.py --allow-system-packages \
-   list-deps cachelib > /tmp/deps.txt)
-grep -qx cachelib /tmp/deps.txt   # this is the failure the pin originally exposed
+git -C "$cachelib_pin_checkout" apply "$PWD"/patches/*.patch
+(cd "$cachelib_pin_checkout" && python3 ./build/fbcode_builder/getdeps.py --allow-system-packages \
+   list-deps cachelib > "$cachelib_pin_checkout/deps.txt")
+grep -qx cachelib "$cachelib_pin_checkout/deps.txt"
 
 # 5. io_uring is actually disabled in folly.                       (instant)
-m=/tmp/cachelib/build/fbcode_builder/manifests/folly
+m="$cachelib_pin_checkout/build/fbcode_builder/manifests/folly"
 grep -qx 'FOLLY_USE_IO_URING=OFF' "$m"
 grep -qx 'Liburing_FOUND=OFF'     "$m"
 grep -qx 'LIBURING_FOUND=OFF'     "$m"
-awk '/^\[dependencies.os=linux\]/{f=1;next} /^\[/{f=0} f' "$m" | grep -qx libaio && \
-  echo "FAIL: folly still declares libaio; the io_uring patch did not apply"
+if awk '/^\[dependencies.os=linux\]/{f=1;next} /^\[/{f=0} f' "$m" | grep -qx libaio; then
+  echo "FAIL: folly still declares libaio; the io_uring patch did not apply" >&2
+  exit 1
+fi
 ```
 
-Step 5's last line asserts on the **folly manifest**, not on `/tmp/deps.txt`. cachelib's own
+Step 5's last check asserts on the **folly manifest**, not on the dependency list. cachelib's own
 manifest declares `libaio` independently, so it legitimately stays in the resolved graph — do
 not "fix" that by asserting `libaio` is absent from the dep list.
 
 The release workflow adds a `pin` job that fails the release if `CACHELIB_REF` is not a full
-40-character SHA or does not resolve upstream (~15 s, ahead of the ~50-minute compile), and
+40-character SHA or does not resolve upstream, and
 reports how far the pin trails upstream `main`.
 
 ## Failure modes, most likely first
@@ -125,7 +130,7 @@ reports how far the pin trails upstream `main`.
    Also watch `magic_enum`: `EventSink.h` needs it, and the Dockerfile hand-copies it from
    `/opt/getdeps-install/magic_enum-*/include/magic_enum` (`c4cfe286` in the fork).
 
-Failure modes 1–3 are caught in ~20 seconds by the local check. 4 and 5 need a real build.
+Failure modes 1–3 are caught by structural checks. 4 and 5 need a real build.
 
 ## Testing the bump for real
 
@@ -133,10 +138,11 @@ Failure modes 1–3 are caught in ~20 seconds by the local check. 4 and 5 need a
 docker build --target tester -t cachelib-grpc-server:test .
 ```
 
-Cold, that is roughly an hour: gRPC v1.60.0, then getdeps' `--only-deps cachelib` (folly,
+Cold builds compile gRPC v1.60.0, then getdeps' `--only-deps cachelib` (folly,
 fbthrift, fizz, wangle, mvfst — the bulk of it), then CacheLib, then the server, then `ctest`
-over both test binaries. A pin bump invalidates every layer; the buildx cache cannot help. The
-mvfst failure, if the pin has it, appears ~30 minutes in.
+over both test binaries. A pin bump invalidates the layers that consume that revision;
+unrelated earlier dependency layers may remain reusable. Record build/test outcome and
+runtime flash smoke on the release architectures, noting any emulation.
 
 To try a candidate revision without editing the file:
 

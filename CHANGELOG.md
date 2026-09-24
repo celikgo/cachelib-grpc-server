@@ -2,16 +2,22 @@
 
 History prior to `1.6.0` was made in the [`celikgo/CacheLib`][fork] fork, where
 this server lived as `standalone_server/` before being extracted into its own
-repository. Container images for every version below are published to
-[`ghcr.io/celikgo/cachelib-grpc-server`][pkg].
+repository. Published images live at
+[`ghcr.io/celikgo/cachelib-grpc-server`][pkg]; a source tag or changelog entry
+alone does not mean an image was published. Publication exceptions are noted below.
 
-## [1.8.0] — 2026-09-23
+## [1.8.0] — unreleased
 
-Correctness release. Three defects here could lose or corrupt a user's data or
-take the server down, and none of them had a test that would have caught it.
+<!-- RELEASE_STATUS: finalize release date and evidence after qualification, before tagging. -->
+Local Docker qualification and publication are pending. The
+[release guide](docs/releasing.md) defines the checks and the
+[release report](bench/strong/RELEASE-1.8.0.md) identifies measured artifacts.
+
+Correctness release addressing cache startup, numeric-value corruption,
+premature counter/CAS expiry, and `Scan` denial of service.
 
 **The previously published hybrid DRAM+SSD tier did not start.** Running the command in the
-README's "Hybrid DRAM + SSD" section against any published image exits at
+README's "Hybrid DRAM + SSD" section against the earlier 1.6.0 image exits at
 startup with `number of read/write threads should be set first as non-zero
 value`. `configureNvmCache` called `NavyConfig::enableAsyncIo()` with the
 reader/writer thread counts in the parameters that mean `maxNumReads` and
@@ -33,6 +39,12 @@ indefinitely and kept running after the client disconnected — on a port with n
 authentication.
 
 ### Fixed
+- Rapid updates no longer shorten an existing key's expiration. `Incr` on a
+  live key, `Increment`/`Decrement` with `ttl_seconds=0`, and
+  `CompareAndSwap` with `keep_ttl=true` preserve the original absolute expiry
+  (including no expiry) when replacing the item. Repeated conversion between
+  system-clock seconds and CacheLib's time source could previously consume
+  TTL near a second boundary. A regression reproduces that premature expiry.
 - The pinned gRPC v1.60.0 build now verifies the tag commit, fetches its exact
   BoringSSL submodule tree as a SHA-256-checked archive when Git cannot serve
   that historical object, and initializes the other required submodules
@@ -77,7 +89,8 @@ authentication.
   flash reads, counters, and TTL. The release workflow now tests each native
   architecture before push, verifies the immutable versioned digest on both
   architectures, and promotes `latest` only after those checks.
-- 150 tests, up from 35. First coverage for `SetNX`, `Increment`, `Decrement`,
+- Expanded tests, up from 35 in the original suite. Release evidence records
+  the executed case count. First coverage for `SetNX`, `Increment`, `Decrement`,
   `Incr`, `CompareAndSwap`, `Touch`, `GetTTL`, `MultiDelete`, `Flush`,
   `Pipeline` and the hybrid tier.
 - A nightly ASan + UBSan run, and `docs/sanitizers.md` stating what it covers
@@ -90,6 +103,11 @@ authentication.
 - `CLAUDE.md` and two skills, `adding-an-rpc` and `updating-the-cachelib-pin`.
 
 ### Documentation
+- Versioned quickstart examples, release provenance, Linux host-build prefixes,
+  supported-version policy, and a local Docker release procedure.
+- Explicit restart semantics: Navy files are truncated at startup; retaining a
+  Docker volume does not make the cache persistent. `Decrement` applies a
+  nonzero TTL on every call, matching `Increment`.
 - `proto/cache.proto` and `README.md` corrected where they promised more than
   the code delivers: the real value-size ceiling, `Scan`'s best-effort cursor,
   `Increment`'s TTL behaviour, `StatsRequest.detailed` and

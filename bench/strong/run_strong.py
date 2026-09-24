@@ -78,9 +78,9 @@ def cgroup(name):
     return p.stdout if p.returncode == 0 else ""
 
 
-def stats(network, name, backend, port):
+def stats(network, name, backend, port, client_image):
     command = ["docker", "run", "--rm", "--network", network,
-               "cachelib-investigation-client:local", "stats", "--backend", backend,
+               client_image, "stats", "--backend", backend,
                "--host", name, "--port", str(port)]
     p = call(command, check=False, timeout=30)
     if p.returncode:
@@ -88,9 +88,9 @@ def stats(network, name, backend, port):
     return json.loads(p.stdout.strip().splitlines()[-1])
 
 
-def verify(network, name, backend, port):
+def verify(network, name, backend, port, client_image):
     p = docker("run", "--rm", "--network", network,
-               "cachelib-investigation-client:local", "verify", "--backend", backend,
+               client_image, "verify", "--backend", backend,
                "--host", name, "--port", str(port), check=False, timeout=40)
     if p.returncode:
         raise RuntimeError(f"correctness: {p.stderr[-800:]}")
@@ -98,7 +98,7 @@ def verify(network, name, backend, port):
 
 
 def setup(engine, name, network, directory, args):
-    image = args.grpc_image if engine.startswith("grpc") else IMAGES[engine]
+    image = args.grpc_image if engine.startswith("grpc") else args.engine_images[engine]
     backend = "grpc" if engine.startswith("grpc") else "memcached" if engine.startswith("memcached") else engine
     port = 50051 if backend == "grpc" else 11211 if backend == "memcached" else 6379
     command = ["docker", "run", "-d", "--name", name, "--network", network,
@@ -148,16 +148,16 @@ def run_once(engine, case_name, repeat, network, root, args):
             if docker("inspect", "-f", "{{.State.Running}}", name, check=False).stdout.strip() == "false":
                 raise RuntimeError("server exited before readiness")
             try:
-                stats(network, name, backend, port)
+                stats(network, name, backend, port, args.correctness_client_image)
                 break
             except Exception:
                 time.sleep(1)
         else:
             raise RuntimeError("server did not become ready")
-        (directory / "correctness.json").write_text(json.dumps(verify(network, name, backend, port), indent=2) + "\n")
+        (directory / "correctness.json").write_text(json.dumps(verify(network, name, backend, port, args.correctness_client_image), indent=2) + "\n")
         command = ["docker", "run", "-d", "--name", client, "--network", network,
                    "--cpus", "4", "--cpuset-cpus", "4-7", "--memory", "1024m", "--memory-swap", "1024m",
-                   "cachebench-go:rc", "-backend", backend, "-address", f"{name}:{port}",
+                   args.go_client_image, "-backend", backend, "-address", f"{name}:{port}",
                    "-run-id", f"{case_name}-r{repeat}", "-value-bytes", str(size),
                    "-objects", str(objects), "-concurrency", str(concurrency),
                    "-pattern", pattern, "-workload", workload, "-operation", operation,
@@ -181,10 +181,10 @@ def run_once(engine, case_name, repeat, network, root, args):
             raise RuntimeError("client never started measurement")
         before_time = dt.datetime.now(dt.timezone.utc).isoformat()
         before = cgroup(name)
-        stats_before = stats(network, name, backend, port)
+        stats_before = stats(network, name, backend, port, args.correctness_client_image)
         waited = docker("wait", client, check=False, timeout=args.seconds + 120)
         after = cgroup(name)
-        stats_after = stats(network, name, backend, port)
+        stats_after = stats(network, name, backend, port, args.correctness_client_image)
         after_time = dt.datetime.now(dt.timezone.utc).isoformat()
         logs = docker("logs", client, check=False)
         (directory / "client.log").write_text((logs.stdout or "") + (logs.stderr or ""))
@@ -216,6 +216,10 @@ def run_once(engine, case_name, repeat, network, root, args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--grpc-image", required=True)
+    parser.add_argument("--go-client-image", default="cachebench-go:rc")
+    parser.add_argument("--correctness-client-image", default="cachelib-investigation-client:local")
+    for engine in ("redis", "valkey", "memcached"):
+        parser.add_argument(f"--{engine}-image", default=IMAGES[engine])
     parser.add_argument("--engines", default="grpc,redis,valkey,memcached")
     parser.add_argument("--cases", default="hit_1k_c1,hit_1k_c8")
     parser.add_argument("--reps", type=int, default=5)
@@ -226,6 +230,9 @@ def main():
     parser.add_argument("--flash-mb", type=int, default=512)
     parser.add_argument("--output", type=pathlib.Path, required=True)
     args = parser.parse_args()
+    args.engine_images = {engine: getattr(args, f"{engine}_image")
+                          for engine in ("redis", "valkey", "memcached")}
+    args.engine_images["memcached_extstore"] = args.memcached_image
     if args.reps < 1 or args.seconds < 1 or args.warmup < 1 or args.memory_mb < args.cache_mb:
         parser.error("invalid duration, repetition count, or memory budget")
     cases = args.cases.split(",")
@@ -257,8 +264,8 @@ def main():
                 "host_arch": platform.machine(), "docker": safe_info, "git_commit": call(["git", "rev-parse", "HEAD"]).stdout.strip(),
                 "git_status": call(["git", "status", "--short", "--untracked-files=normal"]).stdout,
                 "runtime_source_sha256": digest.hexdigest(), "configuration": vars(args) | {"output": str(args.output)},
-                "images": {e: image_info(args.grpc_image if e.startswith("grpc") else IMAGES[e]) for e in engines},
-                "go_client_image": image_info("cachebench-go:rc"), "correctness_client_image": image_info("cachelib-investigation-client:local"),
+                "images": {e: image_info(args.grpc_image if e.startswith("grpc") else args.engine_images[e]) for e in engines},
+                "go_client_image": image_info(args.go_client_image), "correctness_client_image": image_info(args.correctness_client_image),
                 "schedule": schedule, "host_ports_published": False}
     (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     network = "cstrong-" + uuid.uuid4().hex[:10]

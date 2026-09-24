@@ -173,7 +173,10 @@ jobs:
           V='${{ steps.version.outputs.version }}'
           grep -Fqx "constexpr const char* kServerVersion = \"$V\";" <(grep 'kServerVersion =' CacheManager.h)
           grep -Eq "^project\(cachelib-grpc-server VERSION $V LANGUAGES CXX\)$" CMakeLists.txt
-          grep -Fqx "# $V release-candidate qualification" <(head -1 bench/strong/REPORT.md)
+          grep -Fqx "# $V local Docker release benchmarks" <(head -1 "bench/strong/RELEASE-$V.md")
+          python3 bench/strong/render_release_report.py \
+            --results "bench/strong/release-$V-results" \
+            --report "bench/strong/RELEASE-$V.md" --check
           test "${GITHUB_REF_NAME#v}" = "$V" || [ "${{ github.event_name }}" = workflow_dispatch ]
 
       - uses: docker/setup-buildx-action@v3
@@ -380,12 +383,13 @@ jobs:
           jq . dist/provenance.json > /dev/null   # fail loudly on malformed JSON
 
           # Keep current and historical benchmark provenance distinct.
-          for source in bench/strong/release-results/*/summary.json; do
+          for source in bench/strong/release-"$V"-results/*/summary.json; do
             kind=$(basename "$(dirname "$source")")
             cp "$source" "dist/benchmark-current-$kind.json"
           done
-          cp bench/strong/REPORT.md dist/comparative-report.md
-          cp bench/strong/dependencies.arm64.json dist/benchmark-candidate-dependencies.json
+          cp "bench/strong/release-$V-results/campaign.json" dist/benchmark-current-campaign.json
+          cp "bench/strong/RELEASE-$V.md" dist/comparative-report.md
+          cp bench/strong/dependencies.arm64.json dist/benchmark-historical-20260923-dependencies.json
           cp bench/results-summary.json dist/benchmark-historical-1.6.json
 
           cp LICENSE dist/LICENSE
@@ -432,34 +436,38 @@ jobs:
           | Revision date | ${{ needs.pin.outputs.date }} |
           | Commits behind upstream \`main\` | ${{ needs.pin.outputs.behind }} |
 
-          Rebuild this exact image:
+          Rebuild this source with the recorded version and revision labels:
 
           \`\`\`bash
           git clone https://github.com/${{ github.repository }} && cd cachelib-grpc-server
           git checkout v$V
-          docker build --build-arg CACHELIB_REF=${{ needs.pin.outputs.ref }} -t cachelib-grpc-server .
+          docker build --build-arg CACHELIB_REF=${{ needs.pin.outputs.ref }} \\
+            --build-arg SERVER_VERSION=$V --build-arg SOURCE_REVISION=${{ github.sha }} \\
+            -t cachelib-grpc-server .
           \`\`\`
+
+          Package versions can change between builds; these inputs do not promise
+          a bit-identical executable or image digest.
 
           CacheLib is licensed under Apache-2.0; see [\`NOTICE\`](https://github.com/${{ github.repository }}/blob/main/NOTICE).
           This project is not affiliated with, sponsored by, or endorsed by Meta Platforms, Inc.
 
           ## Comparative qualification
 
-          The attached report records five independent 60-second repetitions
-          on a local native arm64 candidate with the runtime source fingerprint
-          and image ID stated there. It retains both the all-RAM 1 KiB loss to
-          Redis and the conditional hit-rate benefit of Navy on a reusable
-          working set larger than configured DRAM. Memcached extstore is the
-          faster flash-backed comparator in that measured trace. When all
-          alternatives were given enough DRAM to hold that set under the same
-          384 MiB service ceiling, Redis and Memcached were substantially
-          faster than Navy; the report includes those five-run results. The simulated
-          origin, additional flash resource, actual container memory, and
-          Docker Desktop page-cache limitations are disclosed. These figures
-          are not claims about physical SSD latency, a production deployment,
-          or native amd64 performance. The release workflow builds and
-          correctness-checks both native architectures from this tag.
-          Read the [versioned report](https://github.com/${{ github.repository }}/blob/v$V/bench/strong/REPORT.md)
+          The attached report and \`benchmark-current-campaign.json\` describe
+          the fresh local Docker campaign for this version, generated from its
+          retained raw results. They record the measured image IDs, source
+          fingerprint, platform, environment, repetitions, and claim limitations.
+          The September 23 candidate and historical 1.6.0 measurements remain
+          separate evidence; they are not pooled into the current summaries.
+
+          Read the report before making performance comparisons. Local Docker
+          results do not establish physical SSD latency or native amd64
+          performance. The release workflow builds and correctness-checks both
+          native architectures from this tag; a newly built release digest must
+          not be equated to the measured image without verifying its runtime
+          identity or rerunning the measurements.
+          Read the [versioned report](https://github.com/${{ github.repository }}/blob/v$V/bench/strong/RELEASE-$V.md)
           and [raw run manifests](https://github.com/${{ github.repository }}/tree/v$V/bench/strong/runs)
           before comparing workloads.
 
@@ -469,9 +477,9 @@ jobs:
           |---|---|
           | \`cache.proto\` | Service definition, for generating clients without cloning |
           | \`provenance.json\` | Image digests and the exact upstream revision, machine-readable |
-          | \`benchmark-current-*.json\` | Generated current-version comparative summaries; raw runs are in \`bench/strong/runs/\` |
+          | \`benchmark-current-*.json\` | Fresh campaign manifest and current-version comparative summaries; raw runs are in \`bench/strong/runs/\` |
           | \`comparative-report.md\` | Current-version implementation, flash, alternatives, and media assessment |
-          | \`benchmark-candidate-dependencies.json\` | Exact observed local arm64 candidate dependencies and binary checksum |
+          | \`benchmark-historical-20260923-dependencies.json\` | Archived September 23 candidate dependencies and binary checksum, not the current release build |
           | \`benchmark-historical-1.6.json\` | Earlier, manually transcribed 1.6.0 summary behind [BENCHMARKS.md](https://github.com/${{ github.repository }}/blob/main/BENCHMARKS.md) |
           | \`LICENSE\`, \`NOTICE\` | Apache-2.0 and upstream attribution |
           | \`SHA256SUMS\` | Checksums for all of the above |
@@ -562,7 +570,7 @@ jobs:
             dist/provenance.json
             dist/benchmark-current-*.json
             dist/comparative-report.md
-            dist/benchmark-candidate-dependencies.json
+            dist/benchmark-historical-20260923-dependencies.json
             dist/benchmark-historical-1.6.json
             dist/LICENSE
             dist/NOTICE

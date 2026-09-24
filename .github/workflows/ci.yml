@@ -56,6 +56,9 @@ jobs:
           python3 bench/render.py --check
           python3 bench/strong/render_report_tables.py --check
 
+      - name: Release campaign validation rules
+        run: python3 bench/strong/test_release_campaign.py
+
       - uses: ludeeus/action-shellcheck@master
         with:
           scandir: ./bench

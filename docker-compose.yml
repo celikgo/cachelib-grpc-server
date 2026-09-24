@@ -23,7 +23,7 @@ services:
       - "50051:50051"
       - "9090:9090"   # Prometheus metrics
     volumes:
-      # Mount a host directory for NVM/flash cache persistence
+      # Backing-file storage only; startup truncates Navy files, with no recovery
       - cachelib-nvm:/data/nvm
     command:
       - "--address=0.0.0.0"

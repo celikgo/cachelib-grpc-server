@@ -1,14 +1,71 @@
 # Current-version comparative benchmark harness
 
+The [fresh 1.8.0 release campaign](RELEASE-1.8.0.md) is separate from the
+[September 23 candidate qualification](REPORT.md). Raw evidence and generated
+results are retained for both campaigns.
+
 This is separate from `bench/results-summary.json` and the historical 1.6.0
 tables. Do not copy numbers between environments or silently replace either.
-The current release-candidate report is `REPORT.md` after qualification.
+The previous release-candidate report is `REPORT.md`; its numbers remain unchanged.
 
 Run from the repository root on an otherwise idle Docker host with at least
 eight Docker CPUs. The harness uses an internal task-owned network, no
 published ports, fresh service containers per run, and exact task-owned
 flash/cache directories. It never formats a device or prunes Docker state.
 The image arguments must identify the implementation being studied.
+
+
+## Fresh release campaign
+
+Build and validate the native runtime and benchmark clients before starting
+measurements. Reserve all eight Docker CPUs for the campaign: do not run
+builds, tests, or another benchmark at the same time. The full campaign has
+**195 runs in 15 groups**, including 105 headline runs at five repetitions
+of 60 seconds. Exploratory durations remain one × 10 seconds, one × 20
+seconds, or two × 20/30 seconds as specified in the plan. Timed measurement
+plus minimum warmup takes 2 h 56 min; startup, correctness checks, file-tier
+settling, and cleanup typically bring the full run to roughly four hours.
+Allow at least 30 GiB free disk for the retained task-owned cache files.
+
+```bash
+# Review the complete schedule without accessing Docker.
+python3 bench/strong/release_campaign.py --plan
+
+# Run after local builds, native tests, and release-smoke.sh have passed.
+# Tags are resolved once to immutable local IDs before any measurement.
+python3 bench/strong/release_campaign.py \
+  --grpc-image cachelib-release:1.8.0-arm64 \
+  --go-client-image cachebench-go:rc \
+  --python-client-image cachelib-investigation-client:local
+
+python3 bench/strong/render_release_report.py
+python3 bench/strong/render_release_report.py --check
+```
+
+The default raw root is `runs/release-1.8.0-20260924`; generated CSV/JSON/SVG
+files live in `release-1.8.0-results`. The complete campaign resolves the
+runtime, both clients, Redis, Valkey, Memcached, and NGINX to image IDs. It
+records the host, Docker resource allocation, source commit/status, harness
+hashes, run schedule, start/finish times, and exact commands. The HTTP
+configuration uses the current origin-connection reuse implementation and
+NGINX upstream keepalive throughout. The 192 MiB RAM objective modes are
+interleaved in one group; Navy/extstore are interleaved in another group.
+Comparisons across those groups remain descriptive.
+
+Every planned attempt is retained. The driver checks required result fields,
+correctness probes, measurement duration, request errors, client exit status,
+warmup stability, and full-hit objectives. It summarizes each group while
+its backing files are still present, continues through honest adverse
+performance outcomes, and exits nonzero for invalid or missing measurements.
+Unstable warmup or a missed full-hit objective limits the affected claim;
+it does not by itself mean the server failed correctness. Dropped arrivals
+in the saturation sweep are measured overload outcomes. There are no silent
+retries or discarded outliers. `--resume` continues groups never started;
+an interrupted group requires investigation and a fresh output path.
+The original one-group commands below remain useful for reproducing the
+older qualification. Use new output paths to preserve prior evidence.
+
+## Individual groups and previous qualification
 
 ```bash
 docker build --target tester --network=host -t cachelib-candidate-tester:local .

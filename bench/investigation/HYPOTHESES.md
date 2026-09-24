@@ -1,5 +1,10 @@
 # Predesignated hypotheses (before the full matrix)
 
+This is the archived hypothesis set for the September 23, 2026 investigation.
+See the [historical outcomes](REPORT.md) and the separately identified
+[1.8.0 release qualification](../strong/RELEASE-1.8.0.md) for measured results.
+The hypotheses below are preserved as written before those measurements.
+
 The pilot validates the tools only. A result needs correctness checks, a recorded
 image digest, and raw output before it counts as evidence. An SSD advantage
 requires an increase in actual flash hits, not just `--enable_nvm`.

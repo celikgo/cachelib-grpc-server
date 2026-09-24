@@ -1,5 +1,9 @@
 # 1.8.0 release-candidate qualification
 
+> Historical September 23 candidate evidence. See the separate [fresh local
+> Docker release campaign](RELEASE-1.8.0.md) for the release measurements.
+> The numeric results below remain unchanged.
+
 Investigated 2026-09-23. This report describes the current source and a
 locally built Linux arm64 candidate. The earlier
 [investigation](../investigation/REPORT.md) and generated

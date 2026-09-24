@@ -1,5 +1,10 @@
 # Superseded HTTP benchmark configuration
 
+This directory preserves the September 23, 2026 candidate campaign. It is
+historical evidence, separate from the [1.8.0 release campaign](../RELEASE-1.8.0.md).
+Use each run manifest's image identity and configuration hashes to distinguish
+the campaigns; an unchanged server version string does not make the artifacts identical.
+
 `http_service.before_reuse.py` is the exact `/work/http_service_strong.py`
 extracted from client image
 `sha256:4ed7ea272e276065c46112b2b9da1bfe47d025741941a959d638b3c99181d4a4`.
