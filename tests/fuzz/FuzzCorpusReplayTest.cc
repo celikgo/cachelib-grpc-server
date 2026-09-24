@@ -26,6 +26,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -61,10 +62,18 @@ Bytes Repeat(const std::string& unit, size_t times) {
 
 // Field 1 (sequence_id) is varint; fields 2..5 (get/set/delete/exists) are
 // length-delimited submessages. Tags below are (field << 3) | wiretype.
+void AppendLength(Bytes& out, size_t length) {
+  do {
+    uint8_t byte = static_cast<uint8_t>(length & 0x7f);
+    length >>= 7;
+    out.push_back(length == 0 ? byte : byte | 0x80);
+  } while (length != 0);
+}
+
 Bytes Submessage(int field, const Bytes& body) {
   Bytes out;
   out.push_back(static_cast<uint8_t>((field << 3) | 2));
-  out.push_back(static_cast<uint8_t>(body.size()));
+  AppendLength(out, body.size());
   out.insert(out.end(), body.begin(), body.end());
   return out;
 }
@@ -72,7 +81,7 @@ Bytes Submessage(int field, const Bytes& body) {
 Bytes StringField(int field, const std::string& value) {
   Bytes out;
   out.push_back(static_cast<uint8_t>((field << 3) | 2));
-  out.push_back(static_cast<uint8_t>(value.size()));
+  AppendLength(out, value.size());
   out.insert(out.end(), value.begin(), value.end());
   return out;
 }
@@ -205,14 +214,52 @@ TEST(FuzzCorpusReplay, NoSingleInputTakesAbsurdlyLong) {
   ASSERT_TRUE(CacheIsUsable());
 
   for (const auto& [name, bytes] : Seeds()) {
+    ASSERT_TRUE(PrepareOneInput());
     const auto start = std::chrono::steady_clock::now();
-    FuzzOneInput(bytes.data(), bytes.size());
+    FuzzPreparedInput(bytes.data(), bytes.size());
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - start)
                         .count();
     EXPECT_LT(ms, 1000) << "corpus input '" << name << "' took " << ms
                         << " ms; a linear matcher needs microseconds";
   }
+}
+
+TEST(FuzzCorpusReplay, InputsStartWithIsolatedValuesAndSeededMatcherKeys) {
+  ASSERT_TRUE(CacheIsUsable());
+  Bytes set = StringField(1, "fuzz:previous-input");
+  const auto value = StringField(2, "must-not-survive");
+  set.insert(set.end(), value.begin(), value.end());
+  const auto write = Submessage(3, set);
+  EXPECT_TRUE(FuzzOneInput(write.data(), write.size()).operationSucceeded);
+  const auto read = Submessage(2, StringField(1, "fuzz:previous-input"));
+  const auto readResult = FuzzOneInput(read.data(), read.size());
+  EXPECT_TRUE(readResult.parsed);
+  EXPECT_FALSE(readResult.operationSucceeded);
+
+  const auto remove = Submessage(4, StringField(1, "fuzz:key"));
+  EXPECT_TRUE(FuzzOneInput(remove.data(), remove.size()).operationSucceeded);
+  const auto fixture = Submessage(2, StringField(1, "fuzz:key"));
+  EXPECT_TRUE(FuzzOneInput(fixture.data(), fixture.size()).operationSucceeded);
+
+  const auto stars = Repeat("*", 60);
+  EXPECT_EQ(FuzzOneInput(stars.data(), stars.size()).scanMatches, 3u);
+  const auto longKey = Submessage(2, StringField(1, std::string(255, 'a')));
+  const auto longResult = FuzzOneInput(longKey.data(), longKey.size());
+  EXPECT_TRUE(longResult.parsed);
+  EXPECT_TRUE(longResult.operationSucceeded);
+}
+
+TEST(FuzzCorpusReplay, BoundaryKeySeedsAreValidProtobuf) {
+  ASSERT_TRUE(CacheIsUsable());
+  size_t checked = 0;
+  for (const auto& [name, bytes] : Seeds()) {
+    if (name == "key-255" || name == "key-256") {
+      EXPECT_TRUE(FuzzOneInput(bytes.data(), bytes.size()).parsed) << name;
+      ++checked;
+    }
+  }
+  EXPECT_EQ(checked, 2u);
 }
 
 }  // namespace

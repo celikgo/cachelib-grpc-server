@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="296" viewBox="0 0 1100 296">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-family="sans-serif" font-size="18">Successful objects per second</text>
+<text x="400" y="52" font-family="sans-serif" font-size="12">objects/s; median of independent runs</text>
+<text x="18" y="82" font-family="monospace" font-size="12">origin_uniform_64k_1ms / grpc</text>
+<rect x="400" y="68" width="157" height="18" fill="#1d6fa5"/>
+<text x="565" y="82" font-family="sans-serif" font-size="12">11,754.0</text>
+<text x="18" y="109" font-family="monospace" font-size="12">origin_uniform_64k_1ms / grpc_nvm</text>
+<rect x="400" y="95" width="224" height="18" fill="#158b8b"/>
+<text x="632" y="109" font-family="sans-serif" font-size="12">16,738.3</text>
+<text x="18" y="136" font-family="monospace" font-size="12">origin_uniform_64k_1ms / memcached_extstore</text>
+<rect x="400" y="122" width="550" height="18" fill="#b59a1d"/>
+<text x="958" y="136" font-family="sans-serif" font-size="12">40,944.6</text>
+<text x="18" y="163" font-family="monospace" font-size="12">origin_uniform_64k_1ms / redis</text>
+<rect x="400" y="149" width="124" height="18" fill="#b94a48"/>
+<text x="532" y="163" font-family="sans-serif" font-size="12">9,281.4</text>
+<text x="18" y="190" font-family="monospace" font-size="12">origin_uniform_64k_20ms / grpc</text>
+<rect x="400" y="176" width="12" height="18" fill="#1d6fa5"/>
+<text x="420" y="190" font-family="sans-serif" font-size="12">924.8</text>
+<text x="18" y="217" font-family="monospace" font-size="12">origin_uniform_64k_20ms / grpc_nvm</text>
+<rect x="400" y="203" width="217" height="18" fill="#158b8b"/>
+<text x="625" y="217" font-family="sans-serif" font-size="12">16,197.6</text>
+<text x="18" y="244" font-family="monospace" font-size="12">origin_uniform_64k_20ms / memcached_extstore</text>
+<rect x="400" y="230" width="549" height="18" fill="#b59a1d"/>
+<text x="957" y="244" font-family="sans-serif" font-size="12">40,876.1</text>
+<text x="18" y="271" font-family="monospace" font-size="12">origin_uniform_64k_20ms / redis</text>
+<rect x="400" y="257" width="9" height="18" fill="#b94a48"/>
+<text x="417" y="271" font-family="sans-serif" font-size="12">719.9</text>
+</svg>

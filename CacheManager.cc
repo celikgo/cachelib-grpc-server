@@ -304,6 +304,13 @@ GetResult CacheManager::get(std::string_view key) {
 bool CacheManager::set(std::string_view key,
                        std::string_view value,
                        uint32_t ttlSeconds) {
+  return setWithCreationTime(key, value, ttlSeconds, 0);
+}
+
+bool CacheManager::setWithCreationTime(std::string_view key,
+                                       std::string_view value,
+                                       uint32_t ttlSeconds,
+                                       uint32_t creationTime) {
   // Increment set count using sequential consistency for guaranteed visibility
   setCount_.fetch_add(1, std::memory_order_seq_cst);
 
@@ -324,7 +331,8 @@ bool CacheManager::set(std::string_view key,
         defaultPoolId_,
         folly::StringPiece(key.data(), key.size()),
         static_cast<uint32_t>(value.size()),
-        ttlSeconds);
+        ttlSeconds,
+        creationTime);
 
     if (!handle) {
       XLOG(WARN) << "Failed to allocate cache item for key=" << key
@@ -467,6 +475,7 @@ IncrDecrResult CacheManager::atomicAddValue(std::string_view key,
 
   int64_t currentValue = 0;
   uint32_t existingTtl = ttlSeconds;
+  uint32_t creationTime = 0;
 
   // Try to get existing value
   auto existingHandle = cache_->find(folly::StringPiece(key.data(), key.size()));
@@ -486,16 +495,9 @@ IncrDecrResult CacheManager::atomicAddValue(std::string_view key,
 
     // Preserve existing TTL if not specified
     if (ttlSeconds == 0) {
-      uint32_t expiryTime = existingHandle->getExpiryTime();
-      if (expiryTime > 0) {
-        uint32_t now = static_cast<uint32_t>(
-            std::chrono::duration_cast<std::chrono::seconds>(
-                std::chrono::system_clock::now().time_since_epoch())
-                .count());
-        if (expiryTime > now) {
-          existingTtl = expiryTime - now;
-        }
-      }
+      creationTime = existingHandle->getCreationTime();
+      const uint32_t expiryTime = existingHandle->getExpiryTime();
+      existingTtl = expiryTime == 0 ? 0 : expiryTime - creationTime;
     }
   }
 
@@ -508,7 +510,7 @@ IncrDecrResult CacheManager::atomicAddValue(std::string_view key,
   std::string newValueStr = std::to_string(newValue);
 
   // Store the new value
-  if (set(key, newValueStr, existingTtl)) {
+  if (setWithCreationTime(key, newValueStr, existingTtl, creationTime)) {
     result.success = true;
     result.newValue = newValue;
   } else {
@@ -560,17 +562,19 @@ IncrResult CacheManager::incr(std::string_view key,
 
   int64_t baseValue = 0;
   uint32_t writeTtl = ttlSeconds;
+  uint32_t creationTime = 0;
   bool createdNew = true;
 
   auto existingHandle = cache_->find(folly::StringPiece(key.data(), key.size()));
   if (existingHandle) {
-    // Treat logically-expired entries as miss so the window gets re-stamped.
-    uint32_t expiryTime = existingHandle->getExpiryTime();
-    uint32_t now = static_cast<uint32_t>(
+    // Keep the fixed-window boundary: a deadline at the current second starts
+    // a new bucket, even though CacheLib's own expiry comparison is strict <.
+    const uint32_t expiryTime = existingHandle->getExpiryTime();
+    const uint32_t now = static_cast<uint32_t>(
         std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::system_clock::now().time_since_epoch())
             .count());
-    bool stillLive = (expiryTime == 0) || (expiryTime > now);
+    const bool stillLive = expiryTime == 0 || expiryTime > now;
 
     if (stillLive) {
       const char* data =
@@ -583,8 +587,13 @@ IncrResult CacheManager::incr(std::string_view key,
         return result;
       }
 
-      // Preserve the existing TTL: the rate-limit window must not slide.
-      writeTtl = (expiryTime == 0) ? 0 : (expiryTime - now);
+      // Preserve the original absolute expiry in the replacement allocation,
+      // rather than converting it to a remaining TTL and adding a second clock
+      // reading. CacheLib uses time(), whose second can differ from system_clock
+      // near a boundary; repeating that conversion can shorten a fixed window
+      // on every increment.
+      creationTime = existingHandle->getCreationTime();
+      writeTtl = expiryTime == 0 ? 0 : expiryTime - creationTime;
       createdNew = false;
     }
   }
@@ -596,7 +605,7 @@ IncrResult CacheManager::incr(std::string_view key,
   }
   std::string newValueStr = std::to_string(newValue);
 
-  if (set(key, newValueStr, writeTtl)) {
+  if (setWithCreationTime(key, newValueStr, writeTtl, creationTime)) {
     result.success = true;
     result.value = newValue;
     result.ttlSet = createdNew;
@@ -639,28 +648,16 @@ CASResult CacheManager::compareAndSwap(std::string_view key,
 
   // Determine effective TTL
   uint32_t effectiveTtl = ttlSeconds;
+  uint32_t creationTime = 0;
   if (keepTtl) {
-    // Preserve existing TTL: calculate remaining time from expiry
-    uint32_t expiryTime = existingHandle->getExpiryTime();
-    if (expiryTime > 0) {
-      uint32_t now = static_cast<uint32_t>(
-          std::chrono::duration_cast<std::chrono::seconds>(
-              std::chrono::system_clock::now().time_since_epoch())
-              .count());
-      if (expiryTime > now) {
-        effectiveTtl = expiryTime - now;
-      } else {
-        effectiveTtl = 0;
-      }
-    } else {
-      // No expiration was set, keep it that way
-      effectiveTtl = 0;
-    }
+    creationTime = existingHandle->getCreationTime();
+    const uint32_t expiryTime = existingHandle->getExpiryTime();
+    effectiveTtl = expiryTime == 0 ? 0 : expiryTime - creationTime;
   }
   // Otherwise use ttlSeconds directly (0 = no expiration, matching Set)
 
   // Values match, perform swap
-  if (set(key, newValue, effectiveTtl)) {
+  if (setWithCreationTime(key, newValue, effectiveTtl, creationTime)) {
     result.success = true;
     result.actualValue = std::string(newValue);
   }

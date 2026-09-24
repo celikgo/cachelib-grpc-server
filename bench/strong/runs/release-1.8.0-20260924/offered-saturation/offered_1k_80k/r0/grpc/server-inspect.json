@@ -1,0 +1,244 @@
+[
+    {
+        "Id": "d06d8cf69f132cb515def1a951fc161af03b1a242edffab741f4055ba9325c91",
+        "Created": "2026-09-24T05:52:45.947712Z",
+        "Path": "/usr/local/bin/cachelib-grpc-server",
+        "Args": [
+            "--cache_size=100663296",
+            "--metrics_port=0",
+            "--nvm_reader_threads=4",
+            "--nvm_writer_threads=4"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 25396,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-24T05:52:45.978915375Z",
+            "FinishedAt": "0001-01-01T00:00:00Z",
+            "Health": {
+                "Status": "healthy",
+                "FailingStreak": 0,
+                "Log": [
+                    {
+                        "Start": "2026-09-24T05:52:50.978935211Z",
+                        "End": "2026-09-24T05:52:50.996961794Z",
+                        "ExitCode": 0,
+                        "Output": "status: SERVING\n"
+                    },
+                    {
+                        "Start": "2026-09-24T05:53:20.997765252Z",
+                        "End": "2026-09-24T05:53:21.015035211Z",
+                        "ExitCode": 0,
+                        "Output": "status: SERVING\n"
+                    }
+                ]
+            }
+        },
+        "Image": "sha256:959aa69a7ee0cac2f584a8b3603e19fd8eddde4824d628459be662162f67035e",
+        "ResolvConfPath": "/var/lib/docker/containers/d06d8cf69f132cb515def1a951fc161af03b1a242edffab741f4055ba9325c91/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/d06d8cf69f132cb515def1a951fc161af03b1a242edffab741f4055ba9325c91/hostname",
+        "HostsPath": "/var/lib/docker/containers/d06d8cf69f132cb515def1a951fc161af03b1a242edffab741f4055ba9325c91/hosts",
+        "LogPath": "/var/lib/docker/containers/d06d8cf69f132cb515def1a951fc161af03b1a242edffab741f4055ba9325c91/d06d8cf69f132cb515def1a951fc161af03b1a242edffab741f4055ba9325c91-json.log",
+        "Name": "/cstrong-grpc-0564f612",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "cstrong-b84b997bff",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 805306368,
+            "NanoCpus": 4000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "0-3",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 805306368,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "d06d8cf69f132cb515def1a951fc161af03b1a242edffab741f4055ba9325c91",
+                "LowerDir": "/var/lib/docker/overlay2/4cf6fd46720e29a8715688d49c36ff69ccfe42771e53f5ad3e9c657b917912ad-init/diff:/var/lib/docker/overlay2/95wcjl87k04fh422uvut9l5cb/diff:/var/lib/docker/overlay2/iuv8n2895rnlvyku145oytlsx/diff:/var/lib/docker/overlay2/f7gh7fatg506htmqo7pgb5med/diff:/var/lib/docker/overlay2/kse1hdi692jjkqgiu5xkyl8bt/diff:/var/lib/docker/overlay2/s16a6i1vguq3lt6ls69fqgriu/diff:/var/lib/docker/overlay2/ybm32w4o2jn2sxhczq95gi3n8/diff:/var/lib/docker/overlay2/mq65t5te6gehqufjwzjm5fjqt/diff:/var/lib/docker/overlay2/i27smvtp748j2tqf57ylktinp/diff:/var/lib/docker/overlay2/wh4pu36pxocsc0mf8ei9eobep/diff:/var/lib/docker/overlay2/ovaacosv9b27hqrf1uskoxzzr/diff:/var/lib/docker/overlay2/38bu4a2oqcel64nkfpv0w1t6a/diff:/var/lib/docker/overlay2/rrsuhwrdhhigwdmk6k74vrryv/diff:/var/lib/docker/overlay2/1u948925myk3tgl8ghwgc0p3t/diff:/var/lib/docker/overlay2/259nbrv8rfj5qoqnz6knfuskv/diff:/var/lib/docker/overlay2/z4kssaitlbf3nk59qz3yw2wcd/diff:/var/lib/docker/overlay2/6vfjj1lcrmfs7yaypwkhjei0g/diff:/var/lib/docker/overlay2/wmbdgc1jud6vmdo3h2ppxgp05/diff:/var/lib/docker/overlay2/wdzr050hksjhz34o0cjd8obcs/diff:/var/lib/docker/overlay2/2yu7bh0f5doiu2nj4kqnzkv6w/diff:/var/lib/docker/overlay2/5f809246ttj0mi2fwoeyni8nw/diff:/var/lib/docker/overlay2/urb0eq5yyy5l566yk1qdpueaq/diff:/var/lib/docker/overlay2/pk6f0dm5l8ktwbe3999wwy88x/diff:/var/lib/docker/overlay2/qn4whiikfwbh29b826wj0xf68/diff:/var/lib/docker/overlay2/f1c44a7011500be588ba2e7ab74cd6bb577151c8401a16316545e3aa83683db0/diff",
+                "MergedDir": "/var/lib/docker/overlay2/4cf6fd46720e29a8715688d49c36ff69ccfe42771e53f5ad3e9c657b917912ad/merged",
+                "UpperDir": "/var/lib/docker/overlay2/4cf6fd46720e29a8715688d49c36ff69ccfe42771e53f5ad3e9c657b917912ad/diff",
+                "WorkDir": "/var/lib/docker/overlay2/4cf6fd46720e29a8715688d49c36ff69ccfe42771e53f5ad3e9c657b917912ad/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [],
+        "Config": {
+            "Hostname": "d06d8cf69f13",
+            "Domainname": "",
+            "User": "cachelib",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "50051/tcp": {},
+                "9090/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "DEBIAN_FRONTEND=noninteractive",
+                "LD_LIBRARY_PATH=/opt/cachelib/lib:/usr/local/lib"
+            ],
+            "Cmd": [
+                "--cache_size=100663296",
+                "--metrics_port=0",
+                "--nvm_reader_threads=4",
+                "--nvm_writer_threads=4"
+            ],
+            "Healthcheck": {
+                "Test": [
+                    "CMD-SHELL",
+                    "grpc_health_probe -addr=:50051 || exit 1"
+                ],
+                "Interval": 30000000000,
+                "Timeout": 10000000000,
+                "StartPeriod": 5000000000,
+                "Retries": 3
+            },
+            "Image": "sha256:959aa69a7ee0cac2f584a8b3603e19fd8eddde4824d628459be662162f67035e",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": [
+                "/usr/local/bin/cachelib-grpc-server"
+            ],
+            "Labels": {
+                "io.celikgo.cachelib.upstream.repository": "https://github.com/facebook/CacheLib.git",
+                "io.celikgo.cachelib.upstream.revision": "2aa2afbe97deadfb00f15260b26b566354c57a78",
+                "org.opencontainers.image.description": "A standalone gRPC server for Meta's CacheLib: 19 RPCs over a Redis-style key/value surface, on a hybrid DRAM+SSD cache.",
+                "org.opencontainers.image.documentation": "https://github.com/celikgo/cachelib-grpc-server/blob/main/README.md",
+                "org.opencontainers.image.licenses": "Apache-2.0",
+                "org.opencontainers.image.revision": "23147ea09e38a020a1bdebddb52bfda65128f65b",
+                "org.opencontainers.image.source": "https://github.com/celikgo/cachelib-grpc-server",
+                "org.opencontainers.image.title": "cachelib-grpc-server",
+                "org.opencontainers.image.version": "1.8.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "54b8808e873e0a785b444b64df2342d31b19b93a69b1c0297735561f608e79ae",
+            "SandboxKey": "/var/run/docker/netns/54b8808e873e",
+            "Ports": {
+                "50051/tcp": null,
+                "9090/tcp": null
+            },
+            "Networks": {
+                "cstrong-b84b997bff": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "d558e205a25a230f8832f32f97c0bcf1d9027c97782bbbfa8a33f257bcc025bd",
+                    "EndpointID": "27b7a51f753158555a2962fde236351259e794ff06774b6d70271cccc1d77de1",
+                    "Gateway": "",
+                    "IPAddress": "172.18.0.2",
+                    "MacAddress": "7a:74:7b:9b:2b:8c",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "cstrong-grpc-0564f612",
+                        "d06d8cf69f13"
+                    ]
+                }
+            }
+        }
+    }
+]

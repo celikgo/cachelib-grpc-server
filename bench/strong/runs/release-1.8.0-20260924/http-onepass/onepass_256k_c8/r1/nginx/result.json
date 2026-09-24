@@ -1,0 +1,36 @@
+{
+  "cache_status": {
+    "ORIGIN": 24555
+  },
+  "client_cpu_usage_usec": 14127726,
+  "client_memory_peak_bytes": 21913600,
+  "concurrency": 8,
+  "elapsed_s": 30.008101306,
+  "errors": 0,
+  "latency_samples": 24555,
+  "measure_seconds": 30,
+  "objects": 64,
+  "objects_s": 818.2790290397455,
+  "origin_bytes_delta": 6436945920,
+  "origin_requests_delta": 24555,
+  "p50_ms": 9.274,
+  "p95_ms": 13.8933,
+  "p999_ms": 48.02008399999999,
+  "p99_ms": 17.36392,
+  "pattern": "one_pass",
+  "payload_mib_s": 204.56975725993638,
+  "size_bytes": 262144,
+  "successful_objects": 24555,
+  "warmup_errors": 0,
+  "warmup_seconds": 15,
+  "warmup_success": 9767,
+  "client_exit_code": 0,
+  "cgroup_sample_times_utc": [
+    "2026-09-24T06:16:12.931553+00:00",
+    "2026-09-24T06:16:42.998737+00:00"
+  ],
+  "path_containers": [
+    "cm-nginx-f37b599b"
+  ],
+  "origin_container": "cm-origin-05e1f599"
+}

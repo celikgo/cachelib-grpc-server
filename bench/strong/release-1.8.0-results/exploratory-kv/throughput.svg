@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="890" viewBox="0 0 1100 890">
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="30" font-family="sans-serif" font-size="18">Successful objects per second</text>
+<text x="400" y="52" font-family="sans-serif" font-size="12">objects/s; median of independent runs</text>
+<text x="18" y="82" font-family="monospace" font-size="12">hit_100b_c8 / grpc</text>
+<rect x="400" y="68" width="99" height="18" fill="#1d6fa5"/>
+<text x="507" y="82" font-family="sans-serif" font-size="12">46,938.7</text>
+<text x="18" y="109" font-family="monospace" font-size="12">hit_100b_c8 / memcached</text>
+<rect x="400" y="95" width="221" height="18" fill="#d48524"/>
+<text x="629" y="109" font-family="sans-serif" font-size="12">104,209.3</text>
+<text x="18" y="136" font-family="monospace" font-size="12">hit_100b_c8 / redis</text>
+<rect x="400" y="122" width="282" height="18" fill="#b94a48"/>
+<text x="690" y="136" font-family="sans-serif" font-size="12">132,966.1</text>
+<text x="18" y="163" font-family="monospace" font-size="12">hit_16k_c8 / grpc</text>
+<rect x="400" y="149" width="85" height="18" fill="#1d6fa5"/>
+<text x="493" y="163" font-family="sans-serif" font-size="12">40,329.6</text>
+<text x="18" y="190" font-family="monospace" font-size="12">hit_16k_c8 / memcached</text>
+<rect x="400" y="176" width="194" height="18" fill="#d48524"/>
+<text x="602" y="190" font-family="sans-serif" font-size="12">91,769.4</text>
+<text x="18" y="217" font-family="monospace" font-size="12">hit_16k_c8 / redis</text>
+<rect x="400" y="203" width="185" height="18" fill="#b94a48"/>
+<text x="593" y="217" font-family="sans-serif" font-size="12">87,380.9</text>
+<text x="18" y="244" font-family="monospace" font-size="12">hit_1k_c1 / grpc</text>
+<rect x="400" y="230" width="21" height="18" fill="#1d6fa5"/>
+<text x="429" y="244" font-family="sans-serif" font-size="12">9,905.0</text>
+<text x="18" y="271" font-family="monospace" font-size="12">hit_1k_c1 / memcached</text>
+<rect x="400" y="257" width="43" height="18" fill="#d48524"/>
+<text x="451" y="271" font-family="sans-serif" font-size="12">20,287.6</text>
+<text x="18" y="298" font-family="monospace" font-size="12">hit_1k_c1 / redis</text>
+<rect x="400" y="284" width="40" height="18" fill="#b94a48"/>
+<text x="448" y="298" font-family="sans-serif" font-size="12">19,056.1</text>
+<text x="18" y="325" font-family="monospace" font-size="12">hit_1k_c16 / grpc</text>
+<rect x="400" y="311" width="147" height="18" fill="#1d6fa5"/>
+<text x="555" y="325" font-family="sans-serif" font-size="12">69,408.9</text>
+<text x="18" y="352" font-family="monospace" font-size="12">hit_1k_c16 / memcached</text>
+<rect x="400" y="338" width="550" height="18" fill="#d48524"/>
+<text x="958" y="352" font-family="sans-serif" font-size="12">258,927.9</text>
+<text x="18" y="379" font-family="monospace" font-size="12">hit_1k_c16 / redis</text>
+<rect x="400" y="365" width="375" height="18" fill="#b94a48"/>
+<text x="783" y="379" font-family="sans-serif" font-size="12">176,801.3</text>
+<text x="18" y="406" font-family="monospace" font-size="12">hit_1k_c4 / grpc</text>
+<rect x="400" y="392" width="56" height="18" fill="#1d6fa5"/>
+<text x="464" y="406" font-family="sans-serif" font-size="12">26,571.4</text>
+<text x="18" y="433" font-family="monospace" font-size="12">hit_1k_c4 / memcached</text>
+<rect x="400" y="419" width="111" height="18" fill="#d48524"/>
+<text x="519" y="433" font-family="sans-serif" font-size="12">52,652.9</text>
+<text x="18" y="460" font-family="monospace" font-size="12">hit_1k_c4 / redis</text>
+<rect x="400" y="446" width="103" height="18" fill="#b94a48"/>
+<text x="511" y="460" font-family="sans-serif" font-size="12">48,738.6</text>
+<text x="18" y="487" font-family="monospace" font-size="12">hit_1m_c4 / grpc</text>
+<rect x="400" y="473" width="4" height="18" fill="#1d6fa5"/>
+<text x="412" y="487" font-family="sans-serif" font-size="12">2,270.1</text>
+<text x="18" y="514" font-family="monospace" font-size="12">hit_1m_c4 / memcached</text>
+<rect x="400" y="500" width="15" height="18" fill="#d48524"/>
+<text x="423" y="514" font-family="sans-serif" font-size="12">7,240.5</text>
+<text x="18" y="541" font-family="monospace" font-size="12">hit_1m_c4 / redis</text>
+<rect x="400" y="527" width="11" height="18" fill="#b94a48"/>
+<text x="419" y="541" font-family="sans-serif" font-size="12">5,535.4</text>
+<text x="18" y="568" font-family="monospace" font-size="12">hit_256k_c8 / grpc</text>
+<rect x="400" y="554" width="21" height="18" fill="#1d6fa5"/>
+<text x="429" y="568" font-family="sans-serif" font-size="12">10,295.4</text>
+<text x="18" y="595" font-family="monospace" font-size="12">hit_256k_c8 / memcached</text>
+<rect x="400" y="581" width="39" height="18" fill="#d48524"/>
+<text x="447" y="595" font-family="sans-serif" font-size="12">18,542.9</text>
+<text x="18" y="622" font-family="monospace" font-size="12">hit_256k_c8 / redis</text>
+<rect x="400" y="608" width="38" height="18" fill="#b94a48"/>
+<text x="446" y="622" font-family="sans-serif" font-size="12">18,335.5</text>
+<text x="18" y="649" font-family="monospace" font-size="12">hit_64k_c8 / grpc</text>
+<rect x="400" y="635" width="53" height="18" fill="#1d6fa5"/>
+<text x="461" y="649" font-family="sans-serif" font-size="12">25,392.7</text>
+<text x="18" y="676" font-family="monospace" font-size="12">hit_64k_c8 / memcached</text>
+<rect x="400" y="662" width="111" height="18" fill="#d48524"/>
+<text x="519" y="676" font-family="sans-serif" font-size="12">52,384.0</text>
+<text x="18" y="703" font-family="monospace" font-size="12">hit_64k_c8 / redis</text>
+<rect x="400" y="689" width="99" height="18" fill="#b94a48"/>
+<text x="507" y="703" font-family="sans-serif" font-size="12">46,663.0</text>
+<text x="18" y="730" font-family="monospace" font-size="12">mixed_1k_c8 / grpc</text>
+<rect x="400" y="716" width="100" height="18" fill="#1d6fa5"/>
+<text x="508" y="730" font-family="sans-serif" font-size="12">47,482.1</text>
+<text x="18" y="757" font-family="monospace" font-size="12">mixed_1k_c8 / memcached</text>
+<rect x="400" y="743" width="223" height="18" fill="#d48524"/>
+<text x="631" y="757" font-family="sans-serif" font-size="12">105,122.0</text>
+<text x="18" y="784" font-family="monospace" font-size="12">mixed_1k_c8 / redis</text>
+<rect x="400" y="770" width="260" height="18" fill="#b94a48"/>
+<text x="668" y="784" font-family="sans-serif" font-size="12">122,702.9</text>
+<text x="18" y="811" font-family="monospace" font-size="12">readheavy_1k_c8 / grpc</text>
+<rect x="400" y="797" width="99" height="18" fill="#1d6fa5"/>
+<text x="507" y="811" font-family="sans-serif" font-size="12">47,028.2</text>
+<text x="18" y="838" font-family="monospace" font-size="12">readheavy_1k_c8 / memcached</text>
+<rect x="400" y="824" width="221" height="18" fill="#d48524"/>
+<text x="629" y="838" font-family="sans-serif" font-size="12">104,351.1</text>
+<text x="18" y="865" font-family="monospace" font-size="12">readheavy_1k_c8 / redis</text>
+<rect x="400" y="851" width="278" height="18" fill="#b94a48"/>
+<text x="686" y="865" font-family="sans-serif" font-size="12">130,989.0</text>
+</svg>

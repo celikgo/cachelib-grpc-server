@@ -1,12 +1,15 @@
 # Benchmarks
 
-This page preserves the published 1.6.0 RAM-only measurements. The
-[1.8.0 comparative qualification](bench/strong/REPORT.md) has separate raw
-results, a stronger compiled-client methodology, and DRAM+flash tests.
+This page is the **historical 1.6.0 RAM-only archive**, not a performance claim
+for the current release. The [1.8.0 release qualification](bench/strong/RELEASE-1.8.0.md)
+has separate image identities, raw results, a compiled-client methodology, and
+DRAM+flash tests. Its [harness guide](bench/strong/README.md) explains how to
+reproduce the current-version experiments.
 
 All numbers below were measured on the hardware stated here, with the harness
 in [`bench/`](bench/). Nothing is extrapolated, and nothing is copied from
-CacheLib's own published figures. Re-run it yourself with `./bench/run.sh`.
+CacheLib's own published figures. Re-run the historical operation mix with
+`./bench/run.sh ghcr.io/celikgo/cachelib-grpc-server:1.6.0`; the full procedure is below.
 
 ## Environment
 
@@ -30,8 +33,9 @@ never leaves the VM's kernel, and they are pinned to disjoint CPU sets so the
 load generator cannot steal cycles from the server it is measuring.
 
 **Read these as a laptop-class figure, not a datacenter one.** A shared
-developer VM on Apple Silicon is not a server: absolute throughput on real
-Linux hardware with more cores will be materially higher. The numbers are
+developer VM on Apple Silicon does not establish throughput on dedicated
+Linux hardware. Hardware, CPU allocation, and networking can change both
+absolute rates and comparative rankings. The numbers are
 published because they are reproducible and honestly measured, not because
 they represent a ceiling.
 
@@ -55,16 +59,17 @@ so p99.9 is a real measurement rather than a p99 fallback.
 <!-- END GENERATED: sweep -->
 
 **Reading the curve.** Throughput climbs to roughly 33k req/s at
-concurrency 100 and then flattens; past that point additional concurrency buys
-almost no throughput and costs a great deal of tail latency (p99 goes from
+concurrency 100, then gains further throughput by concurrency 400 while tail
+latency increases substantially (p99 goes from
 6.8 ms at c=100 to 29.2 ms at c=400). Concurrency ~100 is the knee for this
 particular workload and environment.
 
 Unloaded round-trip latency is **0.11 ms p50** (c=1), which is the
-number to use when reasoning about a single cache lookup on the request path.
+observed result for a single lookup in this environment, including the local
+Docker network and client. Measure your deployment's request path separately.
 
 Run-to-run variance is real on a laptop VM — see the range column, which is
-wide at c=50. That is the measurement environment, not the server.
+wide at c=50. These runs do not isolate host variability from service behavior.
 
 ## Operation mix
 
@@ -90,14 +95,19 @@ bottleneck.
 One committed command regenerates every number on this page:
 
 ```bash
-./bench/all.sh [image]              # a couple of hours; run it on an idle machine
+./bench/all.sh ghcr.io/celikgo/cachelib-grpc-server:1.6.0
 ```
 
 It runs the operation mix once, the concurrency sweep three times — the
 "median of 3" this page claims — writes `bench/results-summary.json` from the
 raw ghz output, and re-renders the tables here and in the README.
+Run it on an otherwise idle host with at least 12 Docker CPUs for the default
+CPU pinning and enough memory for the 4 GiB cache plus process/client overhead.
+It can take hours and rewrites the historical result file and tables; review
+the diff. To compare a current image, use the separate `bench/strong` harness
+instead of replacing this archive with differently versioned results.
 
-Nothing on the path from measurement to page is transcribed by hand:
+The regeneration path derives the tables from raw measurements:
 
 | | |
 |---|---|
@@ -110,9 +120,10 @@ Nothing on the path from measurement to page is transcribed by hand:
 Both `run.sh` and `sweep.sh` take an image reference as their first argument,
 so you can point them at a locally built image.
 
-CI runs `python3 bench/render.py --check` on every push, which fails the build
-if the markdown and the measurement file disagree. Do not edit a number in this
-file by hand — re-measure with `bench/all.sh`, or the check will tell on you.
+CI runs `python3 bench/render.py --check` on pull requests and pushes to
+`main`, which fails the build if the markdown and the measurement file
+disagree. Do not edit a number in this file by hand — re-measure with
+`bench/all.sh`, or the check will tell on you.
 
 > The committed `bench/results-summary.json` predates `bench/summarize.py` and
 > was distilled by hand from the same runs; its `note` field says so. The first

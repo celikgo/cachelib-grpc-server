@@ -2,9 +2,10 @@
 
 **Archived pre-build-fix snapshot.** This report records the first
 investigation before the 1.8.0 dependency-fetch repair. The subsequent
-[1.8.0 qualification](../strong/REPORT.md) built and measured a distinct
-local candidate. Statements below about 1.8.0 being unbuilt describe this
-earlier checkpoint, not the final state of the repository.
+[September 23 candidate qualification](../strong/REPORT.md) built and measured
+a distinct local candidate. The [1.8.0 release qualification](../strong/RELEASE-1.8.0.md)
+records the later release campaign. Statements below about 1.8.0 being unbuilt
+describe this earlier checkpoint, not the final state of the repository.
 
 Investigation date: 2026-09-23. **The checked-out 1.8.0 source was audited, but
 could not be built here. Every new CacheLib performance number below is for a
@@ -439,7 +440,11 @@ bench/investigation/runs/2026-09-23-matrix-1.6`. The focused commands used
 `--case steady_uniform_64k`, `--case origin_uniform_64k --ram-map
 grpc:96,redis:192,valkey:192,memcached:192 --container-memory-mb 256`, and
 `--case hit_1k_c1`; each run directory's manifest and `server-command.json`
-are authoritative for its exact invocation. `run_http.py` reproduces the
+are authoritative for its exact invocation. The `:latest` argument above records
+what was used at that historical checkpoint. For a new replay, use the recorded
+`ghcr.io/celikgo/cachelib-grpc-server@sha256:fea1a76b84a8c6e61bfdd30db100cf9f6bb330c6f93407e237909b9ad10a571a`
+reference and a fresh output directory, rather than resolving today's `:latest`
+or overwriting archived runs. `run_http.py` reproduces the
 common-HTTP cases with `--equal-budget`; `run_limits.py` records boundary checks. Run `python3
 bench/investigation/summarize_http.py
 bench/investigation/runs/2026-09-23-http-equal-1.6` to regenerate its

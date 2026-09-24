@@ -2,16 +2,40 @@
 
 History prior to `1.6.0` was made in the [`celikgo/CacheLib`][fork] fork, where
 this server lived as `standalone_server/` before being extracted into its own
-repository. Container images for every version below are published to
-[`ghcr.io/celikgo/cachelib-grpc-server`][pkg].
+repository. Published images live at
+[`ghcr.io/celikgo/cachelib-grpc-server`][pkg]; a source tag or changelog entry
+alone does not mean an image was published. Publication exceptions are noted below.
 
-## [1.8.0] — 2026-09-23
+## [1.8.0] — 2026-09-24
 
-Correctness release. Three defects here could lose or corrupt a user's data or
-take the server down, and none of them had a test that would have caught it.
+[Release notes and assets](https://github.com/celikgo/cachelib-grpc-server/releases/tag/v1.8.0)
+include image digests and local Docker provenance. The
+[release report](bench/strong/RELEASE-1.8.0.md) identifies measured artifacts;
+the [release guide](docs/releasing.md) documents publication and verification.
+
+Correctness release addressing cache startup, numeric-value corruption,
+premature counter/CAS expiry, and `Scan` denial of service.
+
+### Qualification
+
+- Native Linux arm64 under Docker Desktop on Apple Silicon passed both CTest
+  binaries normally (77.18 s) and with ASan/UBSan (136.92 s). Emulated amd64
+  passed both normal test binaries (45.59 s); no amd64 sanitizer or native
+  amd64 performance qualification is claimed.
+- The suite registers 158 GoogleTest cases: 91 manager and 67 service cases.
+  CTest reports two executable-level passes and does not enumerate executed
+  cases or conditional NVM skips. The runtime smoke independently verified
+  RAM operations, request limits, Docker/gRPC health, Navy eviction, correct
+  flash reads, and TTL expiry on both architectures.
+- GitHub CI passed for campaign source `6a1f5a0`. Native arm64 benchmarks retain
+  measured image identities and five repetitions per headline comparison.
+  All 195 runs across 15 groups passed correctness and completeness checks,
+  with zero request errors. The 105 headline runs qualified. The exploratory
+  80,000/s gRPC overload probe retained 134,902 dropped arrivals; cold and
+  one-pass results and resource-budget limitations remain in the report.
 
 **The previously published hybrid DRAM+SSD tier did not start.** Running the command in the
-README's "Hybrid DRAM + SSD" section against any published image exits at
+README's "Hybrid DRAM + SSD" section against the earlier 1.6.0 image exits at
 startup with `number of read/write threads should be set first as non-zero
 value`. `configureNvmCache` called `NavyConfig::enableAsyncIo()` with the
 reader/writer thread counts in the parameters that mean `maxNumReads` and
@@ -33,6 +57,12 @@ indefinitely and kept running after the client disconnected — on a port with n
 authentication.
 
 ### Fixed
+- Rapid updates no longer shorten an existing key's expiration. `Incr` on a
+  live key, `Increment`/`Decrement` with `ttl_seconds=0`, and
+  `CompareAndSwap` with `keep_ttl=true` preserve the original absolute expiry
+  (including no expiry) when replacing the item. Repeated conversion between
+  system-clock seconds and CacheLib's time source could previously consume
+  TTL near a second boundary. A regression reproduces that premature expiry.
 - The pinned gRPC v1.60.0 build now verifies the tag commit, fetches its exact
   BoringSSL submodule tree as a SHA-256-checked archive when Git cannot serve
   that historical object, and initializes the other required submodules
@@ -56,6 +86,13 @@ authentication.
   It built and ran `cache_manager_test` only, so 15 of the 35 existing tests had
   never run in CI — including one, `CacheServiceTest.Stats`, that could not have
   passed.
+- The fuzz replay fixture now resets values before each input and seeds
+  adversarial matcher keys. Its at-most-four-key cache uses the supported
+  minimum 2^16 hash buckets instead of timing a 2^18-bucket mostly empty
+  traversal under sanitizers. The one-second parse/dispatch/`Scan` bound is
+  unchanged; fixture preparation is outside that timer. Correct protobuf
+  varint lengths restore the 255/256-byte boundary seeds, with regression
+  checks for valid decoding, input isolation, and matcher-key coverage.
 
 ### Changed
 - The hash table is sized from `--cache_size` instead of a hardcoded 2^25
@@ -77,7 +114,9 @@ authentication.
   flash reads, counters, and TTL. The release workflow now tests each native
   architecture before push, verifies the immutable versioned digest on both
   architectures, and promotes `latest` only after those checks.
-- 150 tests, up from 35. First coverage for `SetNX`, `Increment`, `Decrement`,
+- Expanded to 158 registered GoogleTest cases, up from 35 in the original
+  suite; registered counts include conditionally skippable cases. First coverage
+  for `SetNX`, `Increment`, `Decrement`,
   `Incr`, `CompareAndSwap`, `Touch`, `GetTTL`, `MultiDelete`, `Flush`,
   `Pipeline` and the hybrid tier.
 - A nightly ASan + UBSan run, and `docs/sanitizers.md` stating what it covers
@@ -90,6 +129,11 @@ authentication.
 - `CLAUDE.md` and two skills, `adding-an-rpc` and `updating-the-cachelib-pin`.
 
 ### Documentation
+- Versioned quickstart examples, release provenance, Linux host-build prefixes,
+  supported-version policy, and a local Docker release procedure.
+- Explicit restart semantics: Navy files are truncated at startup; retaining a
+  Docker volume does not make the cache persistent. `Decrement` applies a
+  nonzero TTL on every call, matching `Increment`.
 - `proto/cache.proto` and `README.md` corrected where they promised more than
   the code delivers: the real value-size ceiling, `Scan`'s best-effort cursor,
   `Increment`'s TTL behaviour, `StatsRequest.detailed` and

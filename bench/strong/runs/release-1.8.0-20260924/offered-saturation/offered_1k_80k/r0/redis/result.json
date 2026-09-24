@@ -1,0 +1,105 @@
+{
+  "args": {
+    "address": "cstrong-redis-1e3c39b9:6379",
+    "backend": "redis",
+    "batch_size": 16,
+    "concurrency": 16,
+    "measure_seconds": 20,
+    "model": "offered",
+    "objects": 1000,
+    "offered_rate": 80000,
+    "operation": "unary",
+    "origin_ms": 0,
+    "pattern": "uniform",
+    "preload": true,
+    "run_id": "offered_1k_80k-r0",
+    "value_bytes": 1024,
+    "warmup_seconds": 15,
+    "workload": "read-only"
+  },
+  "batches": 1600000,
+  "client_cgroup_after": {
+    "burst_usec": 0,
+    "memory.current": 98357248,
+    "memory.peak": 98357248,
+    "nice_usec": 0,
+    "nr_bursts": 0,
+    "nr_periods": 351,
+    "nr_throttled": 0,
+    "system_usec": 36069306,
+    "throttled_usec": 0,
+    "usage_usec": 61717275,
+    "user_usec": 25647969
+  },
+  "client_cgroup_before": {
+    "burst_usec": 0,
+    "memory.current": 11563008,
+    "memory.peak": 14467072,
+    "nice_usec": 0,
+    "nr_bursts": 0,
+    "nr_periods": 151,
+    "nr_throttled": 0,
+    "system_usec": 15678826,
+    "throttled_usec": 0,
+    "usage_usec": 26713448,
+    "user_usec": 11034621
+  },
+  "definitions": {
+    "latency": "closed-loop request start to response, or offered scheduled arrival to response including queue",
+    "operation": "one key-value operation; batches count separately",
+    "origin": "simulated fixed delay plus cache fill on miss",
+    "payload": "verified cache-hit response bytes"
+  },
+  "dropped_arrivals": 0,
+  "elapsed_s": 20.000038051,
+  "errors": 0,
+  "get_attempts": 1600000,
+  "hits": 1600000,
+  "latency_ms": {
+    "p50": 0.07259,
+    "p95": 0.142592,
+    "p99": 0.27533802999999996,
+    "p999": 1.2580440849999999
+  },
+  "latency_samples": 1600000,
+  "operations": 1600000,
+  "origin_bytes": 0,
+  "origin_bytes_avoided": 1638400000,
+  "origins": 0,
+  "payload_mib_s": 78.12485136356403,
+  "pipeline_stream_creation_ms": [],
+  "scheduler_lag_mean_ms": 0.015231971741875001,
+  "schema": 1,
+  "successful_ops_s": 79999.84779628957,
+  "warmup_stable": true,
+  "warmup_windows_ops": [
+    400000,
+    400000,
+    400000
+  ],
+  "server_stats_before": {
+    "evicted_keys": 0,
+    "keyspace_hits": 1240529,
+    "keyspace_misses": 4,
+    "redis_version": "8.2.10",
+    "total_commands_processed": 1241616,
+    "used_memory": 2634408,
+    "used_memory_rss": 29642752,
+    "valkey_version": null
+  },
+  "server_stats_after": {
+    "evicted_keys": 0,
+    "keyspace_hits": 2800012,
+    "keyspace_misses": 4,
+    "redis_version": "8.2.10",
+    "total_commands_processed": 2801102,
+    "used_memory": 2590728,
+    "used_memory_rss": 29609984,
+    "valkey_version": null
+  },
+  "server_cgroup_sample_times_utc": [
+    "2026-09-24T05:52:25.385202+00:00",
+    "2026-09-24T05:52:45.684907+00:00"
+  ],
+  "client_exit_code": 0
+}

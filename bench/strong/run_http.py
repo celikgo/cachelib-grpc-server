@@ -69,10 +69,10 @@ def start(directory, network, name, alias, cpu, memory, image, extra, cpuset,
     command(args)
 
 
-def ready(network, host):
+def ready(network, host, utility_image):
     for _ in range(60):
         p = docker("run", "--rm", "--network", network, "--entrypoint", "python",
-                   "cachelib-investigation-client:local", "-c",
+                   utility_image, "-c",
                    f"import urllib.request; r=urllib.request.urlopen('http://{host}:8080/obj/100/0',timeout=2); assert r.status==200",
                    check=False, timeout=12)
         if not p.returncode:
@@ -97,7 +97,7 @@ def run_one(args, root, network, case, repeat, engine):
             cache_dir.mkdir()
             # nginx worker needs write access to this task-owned bind directory.
             cache_dir.chmod(0o777)
-            start(directory, network, target, "target", 2, 768, "nginx:1.29-alpine", [], "0-1",
+            start(directory, network, target, "target", 2, 768, args.nginx_image, [], "0-1",
                   docker_options=["--mount", f"type=bind,src={args.nginx_config.resolve()},dst=/etc/nginx/nginx.conf,readonly",
                                   "--mount", f"type=bind,src={cache_dir.resolve()},dst=/data/cache"])
             active.append(target)
@@ -109,11 +109,11 @@ def run_one(args, root, network, case, repeat, engine):
                   ["/work/http_service_strong.py", "adapter"], "0-1", entry="python")
             active.append(target)
         target_host = "origin" if engine == "origin_direct" else "target"
-        ready(network, target_host)
+        ready(network, target_host, args.utility_image)
         cmd = ["docker", "run", "-d", "--name", client, "--network", network,
                "--cpus", "4", "--cpuset-cpus", "2-5",
                "--memory", "1024m", "--memory-swap", "1024m",
-               "--entrypoint", "/usr/local/bin/httpbench", "cachebench-go:rc",
+               "--entrypoint", "/usr/local/bin/httpbench", args.go_client_image,
                "-target", target_host, "-origin", "origin", "-size", str(size),
                "-objects", str(objects), "-concurrency", str(concurrency),
                "-pattern", pattern, "-warmup-seconds", str(args.warmup),
@@ -167,6 +167,9 @@ def run_one(args, root, network, case, repeat, engine):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--grpc-image", required=True)
+    p.add_argument("--go-client-image", default="cachebench-go:rc")
+    p.add_argument("--utility-image", default="cachelib-investigation-client:local")
+    p.add_argument("--nginx-image", default="nginx:1.29-alpine")
     p.add_argument("--output", type=pathlib.Path, required=True)
     p.add_argument("--cases", default="repeated_256k_c8")
     p.add_argument("--reps", type=int, default=5)
@@ -206,8 +209,8 @@ def main():
                 "adapter_source": str(args.adapter_source),
                 "adapter_source_sha256": image_adapter_hash,
                 "images": {image: image_info(image)
-                           for image in (args.grpc_image, "nginx:1.29-alpine", "cachebench-go:rc",
-                                         "cachelib-investigation-client:local", args.adapter_image)},
+                           for image in (args.grpc_image, args.nginx_image, args.go_client_image,
+                                         args.utility_image, args.adapter_image)},
                 "configuration": vars(args) | {"output": str(args.output),
                                                 "nginx_config": str(args.nginx_config),
                                                 "adapter_source": str(args.adapter_source)},
@@ -223,7 +226,7 @@ def main():
     origin = "cm-origin-" + network[-8:]
     try:
         start(args.output, network, origin, "origin", 2, 512,
-              "cachelib-investigation-client:local", ["/work/http_service_strong.py", "origin"],
+              args.utility_image, ["/work/http_service_strong.py", "origin"],
               "6-7", entry="python")
         for case in cases:
             for repeat in range(args.reps):

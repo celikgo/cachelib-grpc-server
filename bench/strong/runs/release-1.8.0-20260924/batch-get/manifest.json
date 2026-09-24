@@ -1,0 +1,120 @@
+{
+  "utc": "2026-09-24T05:41:58.835182+00:00",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "host_arch": "arm64",
+  "docker": {
+    "Architecture": "aarch64",
+    "CgroupVersion": "2",
+    "Driver": "overlay2",
+    "KernelVersion": "7.0.12-linuxkit",
+    "MemTotal": 29379276800,
+    "NCPU": 8,
+    "OperatingSystem": "Docker Desktop",
+    "ServerVersion": "29.8.0"
+  },
+  "git_commit": "6a1f5a00b47f0ce1ec1ba429308017830d993ed7",
+  "git_status": "?? bench/strong/release-1.8.0-results/\n?? bench/strong/runs/release-1.8.0-20260924/\n",
+  "runtime_source_sha256": "f41ed4c752afeb028543a7f8a4a4d443175c490f65c507f2e4dac0bcb4199fcf",
+  "configuration": {
+    "grpc_image": "sha256:959aa69a7ee0cac2f584a8b3603e19fd8eddde4824d628459be662162f67035e",
+    "go_client_image": "sha256:cd1ea0279f292e54b9dad180287c800fcc3dd9e72992f6f2efcbc3f88590fccc",
+    "correctness_client_image": "sha256:3753d36c934906544a046fe0f66066a0c65351887e968c98a4bc7fe850d80c72",
+    "redis_image": "sha256:e0e28b147e4fc2d7bdc28bab8a914a63a2e713fc0fcd09fcc97e24e423d3df1d",
+    "valkey_image": "sha256:1090d9113780a6c818824835da50ad4ae9445283710722fcd4ad13cd9cab59a4",
+    "memcached_image": "sha256:1dd5bd4099e3cca31288437e2dd63d71878251e9a528afa6064a7fc061fd0d4b",
+    "engines": "grpc,redis,memcached",
+    "cases": "batch_get_1k_c8",
+    "reps": 2,
+    "seconds": 20,
+    "warmup": 15,
+    "cache_mb": 96,
+    "memory_mb": 768,
+    "flash_mb": 512,
+    "output": "/private/tmp/cachelib-release-1.8.0-local/bench/strong/runs/release-1.8.0-20260924/batch-get",
+    "engine_images": {
+      "redis": "sha256:e0e28b147e4fc2d7bdc28bab8a914a63a2e713fc0fcd09fcc97e24e423d3df1d",
+      "valkey": "sha256:1090d9113780a6c818824835da50ad4ae9445283710722fcd4ad13cd9cab59a4",
+      "memcached": "sha256:1dd5bd4099e3cca31288437e2dd63d71878251e9a528afa6064a7fc061fd0d4b",
+      "memcached_extstore": "sha256:1dd5bd4099e3cca31288437e2dd63d71878251e9a528afa6064a7fc061fd0d4b"
+    }
+  },
+  "images": {
+    "grpc": {
+      "id": "sha256:959aa69a7ee0cac2f584a8b3603e19fd8eddde4824d628459be662162f67035e",
+      "repo_digests": [],
+      "architecture": "arm64",
+      "labels": {
+        "io.celikgo.cachelib.upstream.repository": "https://github.com/facebook/CacheLib.git",
+        "io.celikgo.cachelib.upstream.revision": "2aa2afbe97deadfb00f15260b26b566354c57a78",
+        "org.opencontainers.image.description": "A standalone gRPC server for Meta's CacheLib: 19 RPCs over a Redis-style key/value surface, on a hybrid DRAM+SSD cache.",
+        "org.opencontainers.image.documentation": "https://github.com/celikgo/cachelib-grpc-server/blob/main/README.md",
+        "org.opencontainers.image.licenses": "Apache-2.0",
+        "org.opencontainers.image.revision": "23147ea09e38a020a1bdebddb52bfda65128f65b",
+        "org.opencontainers.image.source": "https://github.com/celikgo/cachelib-grpc-server",
+        "org.opencontainers.image.title": "cachelib-grpc-server",
+        "org.opencontainers.image.version": "1.8.0"
+      }
+    },
+    "redis": {
+      "id": "sha256:e0e28b147e4fc2d7bdc28bab8a914a63a2e713fc0fcd09fcc97e24e423d3df1d",
+      "repo_digests": [
+        "redis@sha256:5517128c78ca95f28f7dc6a90e2f808f35f01a4a01c2c20e514571b4d9706275"
+      ],
+      "architecture": "arm64",
+      "labels": null
+    },
+    "memcached": {
+      "id": "sha256:1dd5bd4099e3cca31288437e2dd63d71878251e9a528afa6064a7fc061fd0d4b",
+      "repo_digests": [
+        "memcached@sha256:9e4de012dc607573052061c0bcb38abc775e1dd59b24e7ac38d1892842094aaf"
+      ],
+      "architecture": "arm64",
+      "labels": null
+    }
+  },
+  "go_client_image": {
+    "id": "sha256:cd1ea0279f292e54b9dad180287c800fcc3dd9e72992f6f2efcbc3f88590fccc",
+    "repo_digests": [],
+    "architecture": "arm64",
+    "labels": null
+  },
+  "correctness_client_image": {
+    "id": "sha256:3753d36c934906544a046fe0f66066a0c65351887e968c98a4bc7fe850d80c72",
+    "repo_digests": [],
+    "architecture": "arm64",
+    "labels": null
+  },
+  "schedule": [
+    [
+      "batch_get_1k_c8",
+      0,
+      "memcached"
+    ],
+    [
+      "batch_get_1k_c8",
+      0,
+      "redis"
+    ],
+    [
+      "batch_get_1k_c8",
+      0,
+      "grpc"
+    ],
+    [
+      "batch_get_1k_c8",
+      1,
+      "memcached"
+    ],
+    [
+      "batch_get_1k_c8",
+      1,
+      "grpc"
+    ],
+    [
+      "batch_get_1k_c8",
+      1,
+      "redis"
+    ]
+  ],
+  "host_ports_published": false
+}

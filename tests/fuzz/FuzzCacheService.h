@@ -24,8 +24,20 @@ namespace fuzz {
 // True once the process-wide fuzz cache has been constructed successfully.
 bool CacheIsUsable();
 
+struct FuzzInputResult {
+  bool parsed = false;
+  bool operationSucceeded = false;
+  size_t scanMatches = 0;
+};
+
+// Reset value state and seed matcher keys outside the timed request body.
+bool PrepareOneInput();
+
+// Parse, dispatch, and scan with a cache already prepared for this input.
+FuzzInputResult FuzzPreparedInput(const uint8_t* data, size_t size);
+
 // Drive the server with an arbitrary byte buffer. Must never crash.
-void FuzzOneInput(const uint8_t* data, size_t size);
+FuzzInputResult FuzzOneInput(const uint8_t* data, size_t size);
 
 }  // namespace fuzz
 }  // namespace grpc_server

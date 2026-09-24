@@ -1,6 +1,6 @@
 ---
 name: adding-an-rpc
-description: Add a new RPC to cachelib-grpc-server — proto message and rpc, CacheServiceImpl handler, CacheManager method, tests, metrics, changelog and version bump. Use when adding, or being asked to expose, any new operation on cachelib.grpc.CacheService, and when changing an existing RPC's semantics (which requires a new RPC instead).
+description: Add a cachelib.grpc.CacheService RPC across the proto, service, manager, tests, and release documentation. Use for new operations or intentional incompatible semantics; preserve existing wire contracts.
 ---
 
 # Adding an RPC
@@ -12,15 +12,16 @@ arrived much later. Do not repeat that.
 
 ## 0. First decide: new RPC or changed RPC?
 
-Changing what an existing RPC does is never allowed — clients are generated from the published
-`.proto` and the container ships it. `Incr` exists solely because `Increment` re-arms the TTL on
-every write and a fixed-window rate limiter needs the window sealed at creation. Two verbs, two
-semantics. If your change alters observable behaviour of an existing RPC, you are adding an RPC.
+Preserve the published wire contract and intentional operation semantics. `Incr` exists because
+`Increment` re-arms the TTL on every write and a fixed-window rate limiter needs the window
+sealed at creation. An intentional incompatible semantic change therefore needs a new RPC.
+A bug fix that restores the existing documented contract belongs in that RPC, with a regression
+test and changelog entry; it does not need an invented new operation.
 
 ## 1. Name it
 
-Redis-flavoured verbs only: `Set`, `Get`, `Del`, `Incr`, `MGet`. Never HTTP verbs — no `Put`,
-`Post`, `Patch`, `Fetch`. Match the neighbours already in `service CacheService`.
+Follow the existing Redis-flavoured names: `Set`, `Get`, `Delete`, `Incr`, `MultiGet`.
+Match the neighbours already in `service CacheService` rather than inventing aliases.
 
 ## 2. `proto/cache.proto`
 
@@ -60,9 +61,11 @@ message IncrRequest {
 }
 ```
 
-Field numbers start at 1 **within the new message**. Values are `bytes`, TTLs are `int64` on
-the wire and get cast to `uint32_t` in the handler. Documented behaviour must be behaviour the
-code actually has; if you are knowingly leaving a hole, write it down explicitly the way the
+Field numbers start at 1 **within the new message**. Values are `bytes`. Existing TTL fields
+are mostly `int64` on the wire (`CompareAndSwap` uses `uint32`), while the manager consumes
+32-bit durations. Validate new TTL inputs before narrowing; the old handlers' unchecked
+casts are a documented limitation, not a pattern to copy. Documented behaviour must be
+behaviour the code actually has; if you are knowingly leaving a hole, write it down the way the
 `MultiSetResponse` `CAVEAT:` block does rather than quietly overclaiming.
 
 Check it compiles before anything else — this is what CI's fast `proto` job runs:
@@ -86,7 +89,10 @@ fully-qualified `::cachelib::grpc::` types:
 
 ## 4. `CacheServiceImpl.cc`
 
-The handler is a translation layer. No cache logic here. The established shape, in order:
+The handler is a translation layer. No cache logic here. The historical `Incr` shape below
+illustrates delegation and result mapping. Its unchecked TTL conversion mirrors existing
+behavior; for a new RPC, reject values outside the supported duration/expiry range before
+converting them and cover those boundaries in tests.
 
 ```cpp
 ::grpc::Status CacheServiceImpl::Incr(
@@ -153,9 +159,13 @@ increment is lost.
 Plain `set()`, `remove()`, `get()` and `exists()` deliberately do **not** take it, for two
 reasons. They are single CacheLib operations, already safe in the allocator — the mutex exists
 only to make read-then-write *pairs* indivisible, not to protect the cache. And `atomicOpMutex_`
-is a non-recursive `std::mutex` that the RMW paths hold while calling `set()` (`incr` ends with
-`if (set(key, newValueStr, writeTtl))`); making `set()` lock it would self-deadlock every atomic
-op. Never add a lock to `set()`/`remove()`.
+is a non-recursive `std::mutex` that the RMW paths hold while calling `set()` or its private
+`setWithCreationTime()` helper; making either write path lock it would self-deadlock the
+atomic operations. Never add a lock to `set()`/`setWithCreationTime()`/`remove()`.
+
+When preserving an existing expiry, pass the item's original creation time and TTL duration
+to `setWithCreationTime()`, as `incr`, `atomicAddValue`, and `compareAndSwap` do. Converting
+the remaining TTL back through a different clock can shorten the lifetime under rapid writes.
 
 Corollary: `multiSet` and `multiDelete` are loops over `set()`/`remove()` and are **not** atomic
 as a batch. Do not document a new batch RPC as atomic.
@@ -167,8 +177,9 @@ needs **no** MetricsServer change to be reflected in `/metrics`.
 
 What it *does* change is which counters move, and those live in `CacheManager`, not the handler:
 `getCount_`/`hitCount_`/`missCount_` are bumped only inside `get()`, `setCount_` only inside
-`set()`, `deleteCount_` only inside `remove()`. Because `incr()` finishes by calling `set()`,
-an `Incr` shows up in `cachelib_sets_total`. A new method that writes through
+`setWithCreationTime()`, and `deleteCount_` only inside `remove()`. Both public `set()` and
+expiry-preserving RMW writes use that helper, so an `Incr` shows up in
+`cachelib_sets_total`. A new method that writes through
 `cache_->insertOrReplace(...)` directly would be invisible to every counter — decide which is
 correct and say so in the changelog.
 
@@ -180,8 +191,9 @@ change.
 ## 7. Tests — mandatory, in the same commit
 
 Add source files to the **existing** executables in `CMakeLists.txt`; never add a new
-executable (each one relinks CacheLib, folly and fbthrift statically). Only
-`CacheManagerTest.cc` defines `main()`. Fixture class names, `TEST_F` suite names and
+executable (each one repeats the large dependency link). `CacheManagerTest.cc` defines
+the manager binary's `main()`; `CacheServiceTest.cc` defines the service binary's.
+Fixture class names, `TEST_F` suite names and
 `CacheConfig::cacheName` must be unique across the whole binary.
 
 - Manager-level behaviour → `cache_manager_test`
@@ -190,6 +202,7 @@ executable (each one relinks CacheLib, folly and fbthrift statically). Only
 - Wire-level behaviour → `cache_service_test`
   (`CacheServiceTest.cc`, `PipelineTest.cc`, `ServiceContractTest.cc`), driven through
   `server_->InProcessChannel(::grpc::ChannelArguments())` as `ServiceContractTest::SetUp` does.
+  The service binary also includes the request fuzz body and corpus replay under `tests/fuzz/`.
 
 Mandatory cases for any new RPC:
 
@@ -208,7 +221,8 @@ ship with that hole.
 
 ## 8. Backward compatibility
 
-- Adding an rpc is backward compatible. Changing an existing message is not.
+- Adding an RPC or an optional protobuf field with a new number is wire-compatible.
+  Changing an existing field's type, number, or meaning can break clients.
 - Never renumber a field, never reuse a retired number, never change a field's type — old
   clients decode the new bytes as the old type and silently misread them.
 - The `.proto` ships three ways: inside the runtime image at `/opt/cachelib/proto/cache.proto`,
@@ -223,18 +237,20 @@ ship with that hole.
 1. `CHANGELOG.md` — new version section. Follow the 1.6.0 entry: what the RPC does, how it
    differs from the nearest existing one, and the compatibility line
    (*"Additive only; no proto field renumbering. v1.5.x clients keep working."*).
-2. Bump `kServerVersion` in `CacheManager.h` **and** `project(... VERSION ...)` in
-   `CMakeLists.txt`. Nothing in CI checks these agree with each other or with the tag.
-3. Update the RPC count — it is currently 19 and is written down in three places:
-   `README.md` (the intro paragraph and the `proto/cache.proto` line under Project layout) and
-   the `org.opencontainers.image.description` label in the `Dockerfile`. Nothing derives it, so
-   nothing will catch a stale count.
-4. CI `smoke` job (`.github/workflows/ci.yml`) — add a `grpcurl` line under
+2. Bump `kServerVersion` in `CacheManager.h`, `project(... VERSION ...)` in
+   `CMakeLists.txt`, and the default `ARG SERVER_VERSION` in `Dockerfile`. Update the
+   `bench/strong/RELEASE-<version>.md` report. The release workflow checks the header and
+   CMake declarations and report heading against the requested version and tag; runtime
+   smoke checks the binary. Also verify the published image's version label.
+3. Update the RPC inventory and count. Search `README.md`, `CLAUDE.md`, `Dockerfile`,
+   `proto/cache.proto`, and current reports for counts and operation lists. Preserve counts
+   in explicitly historical reports when they describe the historical version.
+4. CI `build` job (`.github/workflows/ci.yml`) — add a `grpcurl` line under
    *"Exercise the RPC surface"*, modelled on the `Incr` pair that asserts `"ttl_set": true` then
-   `"value": "2"`. **Land this after the release that publishes the RPC, not with the
-   implementation**: the job runs against `ghcr.io/celikgo/cachelib-grpc-server:latest`, so a
-   grpcurl line for an unreleased RPC fails with `Unimplemented` on every push until the image
-   exists.
+   `"value": "2"`. Land the smoke check with the implementation: CI builds the runtime image
+   from the checkout. Extend the local release smoke/correctness client when the new operation
+   needs coverage in published-image verification. Do not test an unreleased RPC against an
+   unrelated `:latest` image.
 5. Commit as `feat(<area>): <what it does>`.
 
 ## Verify before pushing
@@ -244,5 +260,6 @@ protoc --proto_path=proto --cpp_out=/tmp proto/cache.proto   # seconds
 docker build --target tester -t cachelib-grpc-server:test .  # ~1h cold, minutes warm
 ```
 
-The `tester` stage runs `ctest`, so both test binaries execute. There is no faster local path
-that actually compiles this code.
+The `tester` stage runs `ctest`, so both test binaries execute. Reusing a compatible builder
+cache avoids rebuilding dependencies; a provisioned Linux host can also use `build.sh`.
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for current build and smoke commands.

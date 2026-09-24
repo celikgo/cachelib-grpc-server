@@ -278,6 +278,12 @@ class CacheManager {
   bool isReady() const { return cache_ != nullptr; }
 
  private:
+  friend class CacheManagerTestPeer;
+
+  // A nonzero creationTime preserves the allocation's original absolute expiry.
+  bool setWithCreationTime(std::string_view key, std::string_view value,
+                           uint32_t ttlSeconds, uint32_t creationTime);
+
   // Configure NVM cache if enabled
   void configureNvmCache(CacheAllocatorConfig& cacheConfig);
 

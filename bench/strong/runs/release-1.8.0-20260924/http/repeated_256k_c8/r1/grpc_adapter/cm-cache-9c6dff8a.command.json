@@ -1,0 +1,22 @@
+[
+  "docker",
+  "run",
+  "-d",
+  "--name",
+  "cm-cache-9c6dff8a",
+  "--network",
+  "cm-367a2d62",
+  "--network-alias",
+  "cache",
+  "--cpus",
+  "1",
+  "--cpuset-cpus",
+  "0-1",
+  "--memory",
+  "384m",
+  "--memory-swap",
+  "384m",
+  "sha256:959aa69a7ee0cac2f584a8b3603e19fd8eddde4824d628459be662162f67035e",
+  "--cache_size=100663296",
+  "--metrics_port=0"
+]

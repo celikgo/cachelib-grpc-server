@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -30,6 +31,21 @@
 
 namespace cachelib {
 namespace grpc_server {
+
+// Read the stored absolute deadline so the regression is independent of the
+// clock used to report a remaining TTL through the public API.
+class CacheManagerTestPeer {
+ public:
+  static std::optional<uint32_t> expiryTime(CacheManager& manager,
+                                          std::string_view key) {
+    auto handle = manager.cache_->find(folly::StringPiece(key.data(), key.size()));
+    if (!handle) {
+      return std::nullopt;
+    }
+    return handle->getExpiryTime();
+  }
+};
+
 namespace test {
 
 namespace {
@@ -511,6 +527,49 @@ TEST_F(AtomicitySemanticsTest, CompareAndSwapKeepTtlPreservesRemainingTtl) {
   const int64_t ttlAfter = cacheManager_->getTTL(key);
   EXPECT_GE(ttlAfter, 95);
   EXPECT_LE(ttlAfter, 101);
+}
+
+// Exercise every TTL-preserving replacement across a wall-clock second. The
+// old implementation repeatedly converted the absolute expiry through
+// system_clock and then CacheLib's time(); near a boundary it could subtract a
+// second on each write, losing dozens of seconds within milliseconds. Compare
+// the actual deadline exactly, rather than tolerating a few seconds of drift.
+TEST_F(AtomicitySemanticsTest, AtomicRewritesPreserveExactAbsoluteExpiry) {
+  const std::vector<std::string> keys = {
+      "expiry-incr", "expiry-increment", "expiry-decrement", "expiry-cas"};
+  std::vector<std::optional<uint32_t>> expiries;
+  for (const auto& key : keys) {
+    ASSERT_TRUE(cacheManager_->set(key, "0", 120));
+    const auto expiry = CacheManagerTestPeer::expiryTime(*cacheManager_, key);
+    ASSERT_TRUE(expiry.has_value());
+    ASSERT_GT(*expiry, 0u);
+    expiries.push_back(expiry);
+  }
+
+  const auto deadline = std::chrono::steady_clock::now() +
+                        std::chrono::milliseconds(1200);
+  int64_t updates = 0;
+  do {
+    const auto fixed = cacheManager_->incr(keys[0], 1, 300);
+    ASSERT_TRUE(fixed.success);
+    ASSERT_FALSE(fixed.ttlSet);
+    ASSERT_EQ(fixed.value, updates + 1);
+    const auto incremented = cacheManager_->increment(keys[1], 1, 0);
+    ASSERT_TRUE(incremented.success);
+    ASSERT_EQ(incremented.newValue, updates + 1);
+    const auto decremented = cacheManager_->decrement(keys[2], 1, 0);
+    ASSERT_TRUE(decremented.success);
+    ASSERT_EQ(decremented.newValue, -updates - 1);
+    const auto swapped = cacheManager_->compareAndSwap(
+        keys[3], std::to_string(updates), std::to_string(updates + 1), 300, true);
+    ASSERT_TRUE(swapped.success);
+    ++updates;
+    for (size_t i = 0; i < keys.size(); ++i) {
+      ASSERT_EQ(CacheManagerTestPeer::expiryTime(*cacheManager_, keys[i]),
+                expiries[i])
+          << keys[i] << " after " << updates << " updates";
+    }
+  } while (std::chrono::steady_clock::now() < deadline);
 }
 
 TEST_F(AtomicitySemanticsTest, CompareAndSwapWithoutKeepTtlClearsExpiry) {

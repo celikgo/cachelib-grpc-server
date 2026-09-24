@@ -23,15 +23,28 @@ containers published to `ghcr.io/celikgo/cachelib-grpc-server`.
 
 ---
 
-## Quickstart (60 seconds)
+## Quickstart
+
+The commands below use **1.8.0**. See the
+[release notes and verification evidence](https://github.com/celikgo/cachelib-grpc-server/releases/tag/v1.8.0)
+for immutable image digests, local Docker build provenance, and platform checks.
+The arm64 build was tested natively on Apple Silicon; amd64 correctness was
+tested through emulation. Performance measurements below are arm64 only.
+
+Install Docker and [`grpcurl`](https://github.com/fullstorydev/grpcurl) first.
+These development examples publish ports on localhost. For shared deployments,
+follow [SECURITY.md](SECURITY.md).
 
 ```bash
-docker run -d --name cache -p 50051:50051 -p 9090:9090 \
-  ghcr.io/celikgo/cachelib-grpc-server:latest
+docker run -d --name cache -p 127.0.0.1:50051:50051 -p 127.0.0.1:9090:9090 \
+  ghcr.io/celikgo/cachelib-grpc-server:1.8.0
+docker inspect --format '{{.State.Health.Status}}' cache
 ```
 
-The image is multi-arch (`linux/amd64`, `linux/arm64`) and ships gRPC
-reflection, so you can talk to it without holding a copy of the `.proto`:
+Wait for the container to become `healthy` before sending requests. The release
+targets `linux/amd64` and `linux/arm64`; its provenance records how each was
+built and tested. The image ships gRPC reflection, so you can talk to it without
+holding a copy of the `.proto`:
 
 ```bash
 grpcurl -plaintext localhost:50051 list
@@ -48,7 +61,13 @@ grpcurl -plaintext -d '{"key":"hello"}' \
 ```
 
 Prometheus metrics are on `:9090/metrics`; the container also carries
-`grpc_health_probe` and a `HEALTHCHECK`, so orchestrators get liveness for free.
+`grpc_health_probe` and a Docker `HEALTHCHECK`. Orchestrators that do not use
+Docker health checks need their own gRPC health probe configuration.
+
+The version tag selects a release; pin its `sha256` digest for an immutable
+deployment. `:latest` is a moving alias promoted after release verification,
+and does not mean the current `main` commit. Use `Stats.version` or the image's
+`--version` output to identify a running server.
 
 `value` is a protobuf `bytes` field, so it is base64-encoded in the JSON
 representation that `grpcurl` uses. Native clients send raw bytes.
@@ -57,8 +76,60 @@ representation that `grpcurl` uses. Native clients send raw bytes.
 
 ## Performance
 
-Measured on an Apple M2 Max (12 vCPU) under Docker Desktop, 4 GiB DRAM cache,
-200,000 x 1 KiB working set, 100% cache hits, median of 3 runs.
+The [1.8.0 release report](bench/strong/RELEASE-1.8.0.md) records exact image
+identities, raw runs, and comparison limitations. The
+[harness guide](bench/strong/README.md) provides reproduction commands.
+
+### 1.8.0 release measurements
+
+<!-- BEGIN GENERATED RELEASE: release-headlines -->
+Measured on native Linux arm64 under Docker Desktop on Apple Silicon, with
+8 Docker CPUs. The results below are medians of five 60-second repetitions;
+all these headline runs had zero request errors. KV services each had four
+CPUs, 96 MiB configured cache RAM, and a 768 MiB container limit unless stated
+otherwise; the client used four separate CPUs.
+
+For 1 KiB cache hits over eight connections, the complete gRPC service was
+slower than the three comparison services:
+
+| Service | Requests/s | p99 |
+|---|---:|---:|
+| CacheLib gRPC 1.8.0 | 46,658 | 0.381 ms |
+| Redis | 126,735 | 0.120 ms |
+| Valkey | 126,375 | 0.121 ms |
+| Memcached | 104,111 | 0.136 ms |
+
+- **Data larger than RAM:** with a 128 MiB reusable set of 64 KiB objects and
+  a simulated 5 ms origin, adding a 512 MiB Navy file gave a median of
+  0 origin calls. CacheLib reached 16,553 objects/s with Navy versus
+  3,688 with RAM alone; Memcached extstore reached
+  44,326 under the same configured cache/file budgets.
+  At a fixed 1,500 arrivals/s, Navy needed a median of 0 origin calls versus
+  31,794 for RAM-only CacheLib over 60 seconds. Configured cache RAM
+  is not total process memory: the report includes measured cgroup peaks.
+- **More RAM also works:** CacheLib gRPC, Redis, and Memcached avoided origin
+  misses with 192 MiB configured cache RAM and a 384 MiB container limit. Separate
+  384 MiB-limit Navy/extstore runs also met the full-hit objective. These
+  separately scheduled groups do not establish a hardware-cost advantage.
+- **HTTP objects:** for repeated 256 KiB objects, the gRPC service plus Python
+  HTTP adapter delivered 2,745 objects/s (p99
+  5.881 ms), versus NGINX's 3,025 (p99
+  4.499 ms). Each complete cache path had two CPUs and 768 MiB;
+  both avoided origin requests. This includes adapter overhead and measures
+  object delivery, not playback quality.
+
+These are shared laptop-VM results, not native amd64 or dedicated Linux
+performance claims. Navy device reads prove logical file-tier use; Docker's
+VM and host page caches prevent a physical SSD latency or endurance claim.
+Origin delay is simulated, and none of these comparisons enables persistence,
+replication, compression, authentication, or TLS.
+<!-- END GENERATED RELEASE: release-headlines -->
+
+### Historical 1.6.0 measurements
+
+The table below was measured on an Apple M2 Max (12 vCPU) under Docker Desktop,
+with a 4 GiB DRAM cache, 200,000 x 1 KiB working set, 100% cache hits, and the
+median of 3 runs.
 Full methodology and the reproducible harness: **[BENCHMARKS.md](BENCHMARKS.md)**.
 
 <!-- BEGIN GENERATED: readme-sweep -->
@@ -79,19 +150,11 @@ similar throughputs do not isolate the cost of transport, protobuf
 serialization, copying, and cache lookup. This is not a Redis comparison.
 
 These are laptop-VM numbers for the older 1.6.0 image. They should not be
-extrapolated to dedicated Linux hardware or the 1.8.0 candidate. The
-[current comparative report](bench/strong/REPORT.md) and
-[earlier investigation](bench/investigation/REPORT.md) keep source versions,
-image identities, and environments separate. In the repeated 1 KiB,
-eight-connection 1.8.0 candidate test, Redis was faster in all five paired
-60-second repetitions; see the current report for the full workload and
-resource conditions.
-With a 128 MiB reusable set and only 96 MiB configured cache RAM, the
-verified Navy tier avoided origin misses in a simulated 5 ms origin test;
-Memcached extstore was faster on that flash-backed trace, and Redis was
-faster when allowed enough RAM to hold the set. The report also measures
-HTTP media-object delivery against NGINX and separates the Python adapter
-cost from the CacheLib service.
+extrapolated to dedicated Linux hardware or 1.8.0. The
+[September 23 candidate report](bench/strong/REPORT.md) and
+[earlier investigation](bench/investigation/REPORT.md) remain separate
+historical records; their source versions, images, and environments differ
+from the release measurements above.
 
 ---
 
@@ -116,11 +179,12 @@ All 19 RPCs live on `cachelib.grpc.CacheService`
 
 A few worth calling out:
 
-- **`Incr` vs `Increment`.** `Increment` applies `ttl_seconds` on *every* call
+- **`Incr` vs `Increment` / `Decrement`.** `Increment` and `Decrement` apply
+  `ttl_seconds` on *every* call
   when it is non-zero, resetting the expiry of a key that already exists — so a
   rate-limit window slides forward forever under sustained load. (Pass
-  `ttl_seconds=0` and it preserves the existing expiry instead, which is not a
-  window either.) `Incr` stamps the TTL **only when it creates the key** and
+  `ttl_seconds=0` and an existing key keeps its expiry, while a new key gets no
+  expiry.) `Incr` stamps the TTL **only when it creates the key** and
   leaves it alone afterwards, and reports which happened via `ttl_set`. That is
   the semantic a fixed-window rate limiter actually needs.
 - **`CompareAndSwap`** carries `keep_ttl`, so optimistic-locking updates do not
@@ -169,20 +233,43 @@ Flags are passed to the container as arguments.
 > key the ceiling is 4,194,271 bytes, and raising `--max_item_size` above
 > 4 MiB changes nothing. Below the slab ceiling the flag is exact: with
 > `--max_item_size=65536`, a 65,536-byte value stores and a 65,537-byte one
-> does not. An oversized value comes back as `success=false`.
+> does not. An oversized value that reaches the handler returns
+> `success=false`.
+
+The gRPC message limit applies to the **whole serialized request or response**:
+`--max_item_size + 1024` bytes, or 4,195,328 bytes by default. A unary `Set`
+request or a batch can exceed it and fail with `RESOURCE_EXHAUSTED` before the
+handler processes it; individually valid values can also produce an oversized
+batch response. Use smaller values/batches, handle both application responses
+and RPC errors, and configure the corresponding limits in your client.
+Keys are limited to 255 bytes. TTLs use whole seconds; the current handlers
+narrow positive signed TTLs to 32 bits without a range check. Use nonnegative,
+bounded TTLs rather than treating the protobuf `int64` field as an unlimited
+duration.
 
 ### Hybrid DRAM + SSD
 
 CacheLib's headline capability is transparently spilling from DRAM to flash.
-Give the container a device or a file and turn the tier on:
+Give the container a backing-file directory and turn the tier on:
 
 ```bash
-docker run -d -p 50051:50051 \
-  -v /mnt/nvme:/data/nvm \
-  ghcr.io/celikgo/cachelib-grpc-server:latest \
+docker run -d --name cache-nvm -p 127.0.0.1:50052:50051 \
+  -v cachelib-nvm:/data/nvm \
+  ghcr.io/celikgo/cachelib-grpc-server:1.8.0 \
   --cache_size=8589934592 \
   --enable_nvm --nvm_path=/data/nvm/cache --nvm_size=107374182400
 ```
+
+This example needs enough host memory and file capacity for the configured
+8 GiB DRAM and 100 GiB flash budgets, plus process and filesystem overhead.
+The named volume uses Docker's storage location. To select an SSD mount, replace
+it with a host directory such as `/mnt/nvme:/data/nvm` and make that directory
+writable by the image's non-root `cachelib` user.
+
+**Both tiers are ephemeral.** Startup truncates the Navy backing file, even
+when it lives in a retained Docker volume. Restarting does not recover cached
+values. This server provides no persistence, replication, or automatic failover;
+applications must refill misses from an authoritative source.
 
 Reads and writes are unchanged; `Stats` reports the flash tier separately via
 `nvm_enabled`, `nvm_size`, `nvm_hit_count`, `nvm_miss_count`,
@@ -221,9 +308,14 @@ and its remove result only see DRAM:
 
 ```bash
 docker compose up -d
+docker compose --profile nvm up -d cachelib-server-nvm
 ```
 
-See [`docker-compose.yml`](docker-compose.yml).
+The first command starts the 2 GiB DRAM example; the second starts the optional
+1 GiB DRAM / 10 GiB flash example on port 50052. Compose builds from the local
+checkout. Its example ports bind all host interfaces, so restrict them to a
+private network or localhost before deployment. See
+[`docker-compose.yml`](docker-compose.yml).
 
 ---
 
@@ -238,18 +330,25 @@ docker build -t cachelib-grpc-server .
 docker build --target tester -t cachelib-grpc-server:test .   # build + run unit tests
 ```
 
-Upstream CacheLib is cloned during the build at a **pinned commit**, so
-rebuilding a release tag reproduces that release rather than picking up whatever
-upstream happens to be that day. Repoint it explicitly to track a newer
+Upstream CacheLib is cloned during the build at a **pinned commit**. The gRPC
+commit and BoringSSL/xz archives are also checked. Base images and OS package
+point versions can move, so rebuilding a tag does not promise an identical
+binary or image digest. Repoint the CacheLib input explicitly to test a newer
 revision:
 
 ```bash
-docker build --build-arg CACHELIB_REF=<commit-sha> .
+docker build --build-arg CACHELIB_REF='<commit-sha>' .
 ```
 
-A host build via `./build.sh` exists and expects CacheLib and its dependencies
-already installed; see [`CMakeLists.txt`](CMakeLists.txt) for the exact
-`find_package` requirements.
+A Linux host build via `./build.sh` expects CacheLib and all of its dependencies,
+gRPC, Protobuf, a C++20 compiler, and CMake already installed. It does not fetch
+or build the dependency chain. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+prefix configuration and [`CMakeLists.txt`](CMakeLists.txt) for the exact
+`find_package` requirements. Linux container images can be built on macOS using
+Docker Desktop; a native macOS server build is not qualified.
+
+The [release guide](docs/releasing.md) describes qualification, provenance,
+publication, and verification of `latest`.
 
 ---
 
@@ -270,8 +369,10 @@ bench/                reproducible benchmark harness
 
 ## What is verified
 
-150 tests across two binaries, run by `ctest` in the Dockerfile's `tester`
-stage on every push. They exist because a cache is a component where a rare
+The suite runs across two binaries through `ctest` in the Dockerfile's `tester`
+stage on pushes to `main` and pull requests. The release evidence records the
+executed GoogleTest case counts; CTest reports two binary-level tests.
+They exist because a cache is a component where a rare
 concurrency bug or an off-by-one at a TTL boundary costs a user their data, and
 because a guarantee this README makes and nothing tests is not a guarantee.
 
@@ -282,7 +383,7 @@ because a guarantee this README makes and nothing tests is not a guarantee.
 | Scan | pagination completeness, cursor invalidation, mutation mid-scan, `count` clamping, metacharacters matched literally, and a time bound that fails if a backtracking matcher returns |
 | Streaming | `sequence_id` correlation batched and interleaved, a malformed message and an empty key mid-stream, 20 client cancellations in a row, shutdown with a stream open under a hard bound, backpressure |
 | Protocol edges | the 255/256-byte key boundary, the value-size boundary, binary and empty values, batch duplicates and partial failure, unicode and embedded-NUL keys |
-| Hybrid DRAM+SSD | initialisation, both Navy engines, DRAM eviction and promotion, byte-exact binary round trips through flash, TTL surviving the trip |
+| Hybrid DRAM+SSD | initialisation with both Navy engines configured, small and large values, DRAM eviction and promotion through BlockCache, byte-exact binary flash round trips, TTL surviving the trip; no separate BigHash eviction qualification is claimed |
 
 A nightly run ([`nightly.yml`](.github/workflows/nightly.yml)) builds the same
 suite with AddressSanitizer and UndefinedBehaviorSanitizer. Only this
@@ -290,8 +391,8 @@ repository's own translation units are instrumented, which bounds what that can
 catch; [`docs/sanitizers.md`](docs/sanitizers.md) says what it covers, and why
 there is no ThreadSanitizer job rather than a noisy one.
 
-A fuzz corpus is replayed through the request-decode path on every CI build, in
-about 150 ms — the regression half of fuzzing, without a second toolchain.
+A fuzz corpus is replayed through the request-decode path on every CI build —
+the regression half of fuzzing, without a second toolchain.
 
 Two things are **not** covered, and are not claimed anywhere: authentication
 and TLS (there are none — see [`SECURITY.md`](SECURITY.md)), and corruption
