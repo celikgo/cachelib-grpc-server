@@ -39,12 +39,34 @@ cmake --build build-sanitize --parallel
 ctest --test-dir build-sanitize --output-on-failure
 ```
 
-<!-- RELEASE_SANITIZER_STATUS: replace with the final observed result and evidence link. -->
-The refreshed 1.8.0 sanitizer qualification is pending. The release evidence
-must record the exact source, architecture, executed GoogleTest case count,
-and result. CTest lists two executable-level tests; this is different from
-the number of individual GoogleTest cases. Earlier timing measurements do not
-establish the outcome or duration of a new build.
+The September 24, 2026 local Docker qualification passed the complete suite on
+**native Linux arm64 under Docker Desktop on Apple Silicon**, both normally
+and with ASan/UBSan. The suite registers **158 GoogleTest cases**: 91 in the
+manager binary and 67 in the service binary. CTest reports these as two
+executable-level tests; its success summary does not enumerate individual
+cases or conditional skips. The runtime smoke check separately verifies Navy
+eviction and read-back.
+
+| Build | Manager binary | Service binary | Total CTest time | Result |
+|---|---:|---:|---:|---|
+| Normal `tester` | 73.09 s | 4.08 s | 77.18 s | Both passed |
+| ASan + UBSan `sanitize` | 99.07 s | 37.85 s | 136.92 s | Both passed |
+
+These are observed test runtimes, excluding compilation and image export.
+The sanitized local image is
+`sha256:6b879efd079af769ce1b90614b835723c395f4fc61a7dffe99e0cc2722604964`;
+the normal tester image is
+`sha256:0bc3ff07c99e886878fa06b16d2f13c0c60de80f79aa4f93b9c30d3498816bda`.
+The retained logs are `build/release/build-sanitize-arm64-final.log` and
+`build/release/build-tester-arm64-final.log`; the
+[release procedure](releasing.md#assemble-assets-and-publish) includes these
+build/check logs in the published evidence.
+
+This result establishes native arm64 coverage only. It does not establish
+amd64 sanitizer coverage or native amd64 performance. The separate amd64
+qualification uses emulation on this host and is recorded separately in the
+release provenance. A passed local qualification does not by itself mean the
+release has been published.
 
 Hash-table sizing matters to sanitizer runtime. It used to be a fixed 2^25
 buckets, and CacheLib's iterator is
