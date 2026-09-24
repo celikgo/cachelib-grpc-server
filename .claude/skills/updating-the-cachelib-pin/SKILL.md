@@ -147,7 +147,7 @@ runtime flash smoke on the release architectures, noting any emulation.
 To try a candidate revision without editing the file:
 
 ```bash
-docker build --build-arg CACHELIB_REF=<40-char-sha> --target tester .
+docker build --build-arg CACHELIB_REF='<40-char-sha>' --target tester .
 ```
 
 ## Commit rule

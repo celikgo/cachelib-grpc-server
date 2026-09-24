@@ -93,16 +93,17 @@ cache-corruption detector, and the README does not claim it is.
 
 ## Why there is no ThreadSanitizer
 
-TSan needs to see both halves of every synchronisation edge. Here it cannot,
-and the result would be reports it cannot rule out rather than races that
-exist:
+TSan needs to see both halves of every synchronisation edge. The partial
+instrumentation here limits how reliably its reports could be interpreted;
+a reported conflict may involve synchronization that TSan cannot observe:
 
 1. **Half-instrumented atomics.** CacheLib's locks and its item-refcount
    compare-and-swaps are compiled into `libcachelib_allocator.a` without
    instrumentation, while the handle refcount operations that CacheLib puts in
    headers *are* instrumented when expanded into our translation units. TSan
-   sees one side of each pair and no happens-before edge between them, and
-   manufactures a race.
+   can miss the happens-before edge between them and report a race even
+   where dependency synchronization exists. Such a report needs investigation,
+   not automatic dismissal.
 
 2. **Upstream's own annotations are dead.** CacheLib marks its
    documented-benign races with `annotate_ignore_thread_sanitizer_guard`. Those

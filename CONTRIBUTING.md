@@ -97,7 +97,7 @@ before and after and put both numbers in the pull request. The historical
 
 ```bash
 ./bench/run.sh ghcr.io/celikgo/cachelib-grpc-server:1.6.0
-python3 bench/report.py bench/results/*.json
+python3 bench/report.py bench/results/{set,get,incr,ping}.json
 ```
 
 State the hardware. Numbers without a stated environment are not useful. See

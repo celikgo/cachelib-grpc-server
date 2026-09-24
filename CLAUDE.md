@@ -84,7 +84,7 @@ that the current source passed. There is no qualified full-dependency TSan job â
   report, not a doc edit â€” the `MultiSet` empty-key caveat in the proto is the model for
   writing down a hole you are not fixing yet.
 - Historical 1.6.0 tables are rendered from `bench/results-summary.json`;
-  `python3 bench/render.py --check` fails CI if their generated blocks drift. Current
+  `python3 bench/render.py --check` fails CI if their generated blocks drift. Archived
   September 23 candidate tables use `bench/strong/render_report_tables.py --check`;
   the fresh release report uses `bench/strong/render_release_report.py --check` after its
   complete campaign. Preserve separate versions, image identities, and environments. Regenerate
@@ -118,8 +118,10 @@ bench: generate the published tables from the committed measurement
 ## Version bumps
 
 Bump `kServerVersion` in `CacheManager.h` (reported by `Stats.version`, `--version`, and the
-`cachelib_info` metric) and `project(... VERSION ...)` in `CMakeLists.txt`, then update the
-changelog and qualification report. The release workflow checks the source declarations,
-report heading, requested version, and tag. Runtime smoke verifies the reported version.
+`cachelib_info` metric), `project(... VERSION ...)` in `CMakeLists.txt`, and the default
+`ARG SERVER_VERSION` in `Dockerfile`, then update the changelog and
+`bench/strong/RELEASE-<version>.md` report. The release workflow checks the header and CMake
+declarations, report heading, requested version, and tag. Runtime smoke verifies the
+reported version; also verify the published image's version label.
 Follow [docs/releasing.md](docs/releasing.md) for local Docker publication and its required
 provenance. `latest` identifies a verified published image, not the current source checkout.

@@ -299,7 +299,7 @@ binary or image digest. Repoint the CacheLib input explicitly to test a newer
 revision:
 
 ```bash
-docker build --build-arg CACHELIB_REF=<commit-sha> .
+docker build --build-arg CACHELIB_REF='<commit-sha>' .
 ```
 
 A Linux host build via `./build.sh` expects CacheLib and all of its dependencies,

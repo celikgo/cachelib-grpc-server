@@ -4,8 +4,8 @@ Three small diffs applied to the [facebook/CacheLib][up] tree during the
 container build, at the revision pinned by `ARG CACHELIB_REF` in the
 `Dockerfile`. They are applied with `git apply`, so if a pin bump makes one stop
 applying the build fails immediately and loudly instead of much later with a
-confusing error. CI verifies they still apply on every push, in about 20
-seconds, without waiting on a full build.
+confusing error. CI verifies they still apply on pull requests and pushes to
+`main`, without waiting on a full build.
 
 | Patch | Touches | Why |
 |---|---|---|

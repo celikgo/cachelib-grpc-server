@@ -130,7 +130,7 @@ release_commit=$(git rev-parse HEAD)
 test -z "$(git status --porcelain)"
 git merge-base --is-ancestor "$build_source_commit" "$release_commit"
 git diff --exit-code "$build_source_commit" "$release_commit" -- \
-  Dockerfile CMakeLists.txt build.sh proto cmake patches '*.cc' '*.h'
+  Dockerfile .dockerignore CMakeLists.txt build.sh proto cmake patches '*.cc' '*.h'
 python3 - "$build_source_commit" "$release_commit" <<'PY'
 import hashlib
 import subprocess
@@ -291,11 +291,18 @@ Linux can use `sha256sum` with the same checksum-file format.
 Tag pushes matching `v*` trigger the Release workflow. Temporarily disable
 **only that workflow** before pushing the release tag, so it cannot rebuild
 and overwrite the locally verified images. Leave CI and Nightly enabled.
+Disabling a workflow does not cancel an existing run: require that no Release
+run is active before proceeding, and recheck after disabling it.
 The following restores a previously active Release workflow on shell exit:
 
 ```bash
 test "$(gh api "repos/$release_repo/actions/workflows/release.yml" \
   --jq .state)" = active
+require_no_active_release_runs() {
+  test "$(gh run list --repo "$release_repo" --workflow release.yml --limit 100 \
+    --json status --jq '[.[] | select(.status != "completed")] | length')" -eq 0
+}
+require_no_active_release_runs
 restore_release_workflow() {
   gh workflow enable release.yml --repo "$release_repo"
 }
@@ -303,6 +310,7 @@ trap restore_release_workflow EXIT
 gh workflow disable release.yml --repo "$release_repo"
 test "$(gh api "repos/$release_repo/actions/workflows/release.yml" \
   --jq .state)" = disabled_manually
+require_no_active_release_runs
 
 test "$(git rev-parse HEAD)" = "$release_commit"
 test -z "$(git status --porcelain)"

@@ -120,9 +120,10 @@ The regeneration path derives the tables from raw measurements:
 Both `run.sh` and `sweep.sh` take an image reference as their first argument,
 so you can point them at a locally built image.
 
-CI runs `python3 bench/render.py --check` on every push, which fails the build
-if the markdown and the measurement file disagree. Do not edit a number in this
-file by hand — re-measure with `bench/all.sh`, or the check will tell on you.
+CI runs `python3 bench/render.py --check` on pull requests and pushes to
+`main`, which fails the build if the markdown and the measurement file
+disagree. Do not edit a number in this file by hand — re-measure with
+`bench/all.sh`, or the check will tell on you.
 
 > The committed `bench/results-summary.json` predates `bench/summarize.py` and
 > was distilled by hand from the same runs; its `note` field says so. The first

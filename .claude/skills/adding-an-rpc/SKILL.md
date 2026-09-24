@@ -159,9 +159,13 @@ increment is lost.
 Plain `set()`, `remove()`, `get()` and `exists()` deliberately do **not** take it, for two
 reasons. They are single CacheLib operations, already safe in the allocator — the mutex exists
 only to make read-then-write *pairs* indivisible, not to protect the cache. And `atomicOpMutex_`
-is a non-recursive `std::mutex` that the RMW paths hold while calling `set()` (`incr` ends with
-`if (set(key, newValueStr, writeTtl))`); making `set()` lock it would self-deadlock every atomic
-op. Never add a lock to `set()`/`remove()`.
+is a non-recursive `std::mutex` that the RMW paths hold while calling `set()` or its private
+`setWithCreationTime()` helper; making either write path lock it would self-deadlock the
+atomic operations. Never add a lock to `set()`/`setWithCreationTime()`/`remove()`.
+
+When preserving an existing expiry, pass the item's original creation time and TTL duration
+to `setWithCreationTime()`, as `incr`, `atomicAddValue`, and `compareAndSwap` do. Converting
+the remaining TTL back through a different clock can shorten the lifetime under rapid writes.
 
 Corollary: `multiSet` and `multiDelete` are loops over `set()`/`remove()` and are **not** atomic
 as a batch. Do not document a new batch RPC as atomic.
@@ -173,8 +177,9 @@ needs **no** MetricsServer change to be reflected in `/metrics`.
 
 What it *does* change is which counters move, and those live in `CacheManager`, not the handler:
 `getCount_`/`hitCount_`/`missCount_` are bumped only inside `get()`, `setCount_` only inside
-`set()`, `deleteCount_` only inside `remove()`. Because `incr()` finishes by calling `set()`,
-an `Incr` shows up in `cachelib_sets_total`. A new method that writes through
+`setWithCreationTime()`, and `deleteCount_` only inside `remove()`. Both public `set()` and
+expiry-preserving RMW writes use that helper, so an `Incr` shows up in
+`cachelib_sets_total`. A new method that writes through
 `cache_->insertOrReplace(...)` directly would be invisible to every counter — decide which is
 correct and say so in the changelog.
 
@@ -232,9 +237,11 @@ ship with that hole.
 1. `CHANGELOG.md` — new version section. Follow the 1.6.0 entry: what the RPC does, how it
    differs from the nearest existing one, and the compatibility line
    (*"Additive only; no proto field renumbering. v1.5.x clients keep working."*).
-2. Bump `kServerVersion` in `CacheManager.h` **and** `project(... VERSION ...)` in
-   `CMakeLists.txt`, and update the qualification report. The release workflow checks these
-   declarations against the requested version and tag; runtime smoke checks the binary.
+2. Bump `kServerVersion` in `CacheManager.h`, `project(... VERSION ...)` in
+   `CMakeLists.txt`, and the default `ARG SERVER_VERSION` in `Dockerfile`. Update the
+   `bench/strong/RELEASE-<version>.md` report. The release workflow checks the header and
+   CMake declarations and report heading against the requested version and tag; runtime
+   smoke checks the binary. Also verify the published image's version label.
 3. Update the RPC inventory and count. Search `README.md`, `CLAUDE.md`, `Dockerfile`,
    `proto/cache.proto`, and current reports for counts and operation lists. Preserve counts
    in explicitly historical reports when they describe the historical version.
